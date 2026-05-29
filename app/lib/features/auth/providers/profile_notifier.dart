@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/constants/api_constants.dart';
@@ -17,50 +14,25 @@ class ProfileNotifier extends _$ProfileNotifier {
     // No initial state needed
   }
 
+  /// Update nama dan/atau emoji avatar. Dikirim sebagai JSON biasa —
+  /// tidak ada file/upload, jadi gratis (tanpa object storage).
   Future<void> updateProfile({
     String? name,
-    File? avatarFile,
+    String? avatar,
   }) async {
     state = const AsyncLoading();
 
     try {
       final dio = ref.read(dioProvider);
-      final formData = FormData();
-
-      if (name != null) formData.fields.add(MapEntry('name', name));
-      if (avatarFile != null) {
-        formData.files.add(MapEntry(
-          'avatar',
-          await MultipartFile.fromFile(avatarFile.path),
-        ));
-      }
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (avatar != null) body['avatar'] = avatar;
 
       final res = await dio.put<Map<String, dynamic>>(
         ApiConstants.profile,
-        data: formData,
+        data: body,
       );
 
-      // Update user di auth state
-      final updatedUser = User.fromJson(res.data!['user'] as Map<String, dynamic>);
-      ref.read(authNotifierProvider.notifier).state = AsyncData(updatedUser);
-
-      state = const AsyncData(null);
-    } catch (e, st) {
-      state = AsyncError(e, st);
-      rethrow;
-    }
-  }
-
-  Future<void> deleteAvatar() async {
-    state = const AsyncLoading();
-
-    try {
-      final dio = ref.read(dioProvider);
-      final res = await dio.delete<Map<String, dynamic>>(
-        ApiConstants.profileAvatar,
-      );
-
-      // Update user di auth state
       final updatedUser = User.fromJson(res.data!['user'] as Map<String, dynamic>);
       ref.read(authNotifierProvider.notifier).state = AsyncData(updatedUser);
 

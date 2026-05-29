@@ -1,28 +1,28 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_spacing.dart';
 import '../utils/initials.dart';
 
-/// Avatar lingkaran dengan inisial deterministik (atau foto profil bila ada).
+/// Avatar lingkaran: emoji pilihan user (kalau ada), atau inisial deterministik.
 ///
 /// Aturan (design-spec.md §5):
 /// - Bentuk: lingkaran penuh
-/// - Inisial: 2 huruf (1 huruf untuk nama 1 kata)
 /// - Background: deterministik dari hash nama → konsisten lintas perangkat
+/// - Emoji ditaruh di tengah; kalau kosong, pakai inisial 2 huruf
 /// - Inner ring `2px solid rgba(255,255,255,0.3)` untuk kesan premium
-/// - Teks inisial putih
 class AvatarWidget extends StatelessWidget {
   const AvatarWidget({
     super.key,
     required this.name,
-    this.photoUrl,
+    this.emoji,
     this.size = AvatarSize.large,
     this.ringColor,
     this.ringWidth = 0,
   });
 
   final String name;
-  final String? photoUrl;
+
+  /// Emoji avatar (1–2 karakter). Null/empty → fallback ke inisial.
+  final String? emoji;
   final double size;
 
   /// Ring di LUAR avatar (mis. accent ring untuk profile screen).
@@ -34,6 +34,7 @@ class AvatarWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials = Initials.from(name);
     final bgColor = Initials.colorFor(name);
+    final hasEmoji = emoji != null && emoji!.isNotEmpty;
 
     final inner = Container(
       width: size,
@@ -46,16 +47,19 @@ class AvatarWidget extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Foto atau inisial.
-          photoUrl != null && photoUrl!.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: photoUrl!,
-                  fit: BoxFit.cover,
-                  fadeInDuration: const Duration(milliseconds: 200),
-                  placeholder: (_, _) => _initialsLayer(initials),
-                  errorWidget: (_, _, _) => _initialsLayer(initials),
-                )
-              : _initialsLayer(initials),
+          Center(
+            child: hasEmoji
+                ? Text(emoji!, style: TextStyle(fontSize: size * 0.5))
+                : Text(
+                    initials,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: size * 0.4,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                    ),
+                  ),
+          ),
           // Inner ring rgba(255,255,255,0.3) — premium touch.
           DecoratedBox(
             decoration: BoxDecoration(
@@ -84,19 +88,5 @@ class AvatarWidget extends StatelessWidget {
     }
 
     return inner;
-  }
-
-  Widget _initialsLayer(String initials) {
-    return Center(
-      child: Text(
-        initials,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: size * 0.4,
-          fontWeight: FontWeight.w600,
-          height: 1,
-        ),
-      ),
-    );
   }
 }

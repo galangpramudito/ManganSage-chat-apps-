@@ -41,7 +41,7 @@ class ConversationTile extends StatelessWidget {
             children: [
               AvatarWidget(
                 name: conversation.participant.name,
-                photoUrl: conversation.participant.avatar,
+                emoji: conversation.participant.avatar,
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

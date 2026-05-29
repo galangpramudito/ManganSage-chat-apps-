@@ -111,7 +111,7 @@ class MessageBubble extends StatelessWidget {
               child: isFirstInGroup
                   ? AvatarWidget(
                       name: participantName ?? '?',
-                      photoUrl: participantAvatarUrl,
+                      emoji: participantAvatarUrl,
                       size: AvatarSize.small,
                     )
                   : const SizedBox.shrink(),

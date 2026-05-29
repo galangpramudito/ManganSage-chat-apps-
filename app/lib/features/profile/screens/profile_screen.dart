@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../auth/providers/auth_notifier.dart';
+import '../../auth/providers/profile_notifier.dart';
 import '../../auth/screens/edit_profile_screen.dart';
 
 /// Tab Profil — design-spec.md §8 Tab 3.
@@ -50,7 +51,7 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       AvatarWidget(
                         name: user.name,
-                        photoUrl: user.avatar,
+                        emoji: user.avatar,
                         size: AvatarSize.profile,
                         ringColor: theme.colorScheme.primary,
                         ringWidth: 3,
@@ -103,9 +104,9 @@ class ProfileScreen extends ConsumerWidget {
                         color: theme.dividerColor,
                       ),
                       _ProfileAction(
-                        icon: Icons.notifications_outlined,
+                        icon: Icons.badge_outlined,
                         label: 'Edit Nama',
-                        onTap: () => _notImplemented(context),
+                        onTap: () => _editName(context, ref, user.name),
                       ),
                     ],
                   ),
@@ -152,13 +153,49 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _notImplemented(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur akan datang.'),
-        duration: Duration(seconds: 2),
+  Future<void> _editName(
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+  ) async {
+    final ctrl = TextEditingController(text: currentName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Nama'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Nama'),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Simpan'),
+          ),
+        ],
       ),
     );
+
+    if (newName == null || newName.isEmpty || newName == currentName) return;
+
+    try {
+      await ref.read(profileProvider.notifier).updateProfile(name: newName);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama berhasil diubah')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mengubah nama')),
+      );
+    }
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {

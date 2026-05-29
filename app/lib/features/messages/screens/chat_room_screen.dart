@@ -172,7 +172,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           children: [
             AvatarWidget(
               name: widget.participant.name,
-              photoUrl: widget.participant.avatar,
+              emoji: widget.participant.avatar,
               size: AvatarSize.small,
             ),
             const SizedBox(width: AppSpacing.sm),

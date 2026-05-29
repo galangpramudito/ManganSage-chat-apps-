@@ -42,7 +42,7 @@ class UserTile extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  AvatarWidget(name: user.name, photoUrl: user.avatar),
+                  AvatarWidget(name: user.name, emoji: user.avatar),
                   if (user.isOnline)
                     Positioned(
                       right: 0,
