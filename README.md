@@ -9,7 +9,9 @@ Aplikasi real-time chat — minimalis, iMessage-like, Flutter + Laravel.
 
 ## ⚠️ Status Production (29 Mei 2026)
 
-Cloud Run service **mangansage-api** saat ini balikin **HTTP 503** karena billing GCP project `galangpramudito-496322` di-disable. Aktifkan billing di [GCP Billing Console](https://console.cloud.google.com/billing/linkedaccount?project=galangpramudito-496322) untuk pulih. Pakai backend lokal sementara (lihat [Dev Lokal](#dev-lokal)).
+**Migrasi: Cloud Run → Oracle Cloud Free Tier** sedang berjalan. Cloud Run service `mangansage-api` saat ini **HTTP 503** (billing GCP project di-disable). Lihat [`ORACLE_DEPLOY.md`](./ORACLE_DEPLOY.md) untuk panduan setup Oracle Cloud (gratis selamanya, lebih cocok untuk WebSocket Reverb daripada Cloud Run).
+
+Pakai backend lokal sementara setup Oracle (lihat [Dev Lokal](#dev-lokal)).
 
 ---
 
@@ -21,9 +23,19 @@ flutter pub get
 flutter run
 ```
 
-Default-nya pakai backend Cloud Run (`https://mangansage-api-722613562569.asia-southeast1.run.app`). Login dengan user seeded di Neon: `andi@mangansage.test` / `password123`.
+**Default-nya pakai backend lokal** (`http://10.0.2.2:8000/api` untuk Android emulator). Jalankan backend lokal dulu (lihat [Dev Lokal](#dev-lokal)) lalu login dengan user seeded: `andi@mangansage.test` / `password123`.
 
-WebSocket realtime non-aktif by default — banner "Tidak tersambung" akan tampil di ChatRoom; REST tetap jalan (pull-to-refresh untuk update). Untuk realtime, jalankan Reverb lokal + override URL (lihat [Dev Lokal](#dev-lokal)).
+WebSocket realtime non-aktif by default — banner "Tidak tersambung" akan tampil di ChatRoom; REST tetap jalan (pull-to-refresh untuk update). Untuk realtime, jalankan Reverb lokal + override URL.
+
+Untuk build production (setelah Oracle Cloud aktif):
+```powershell
+flutter build apk --release `
+  --dart-define=API_BASE_URL=https://api.yourdomain.com/api `
+  --dart-define=REVERB_HOST=api.yourdomain.com `
+  --dart-define=REVERB_PORT=443 `
+  --dart-define=REVERB_FORCE_TLS=true `
+  --dart-define=REVERB_APP_KEY=<dari_.env.production_di_VM>
+```
 
 ---
 
@@ -118,7 +130,7 @@ Protected (auth:sanctum)
 | Routing | GoRouter dengan redirect guard |
 | Backend | Laravel 13 + PHP 8.3 |
 | Database | Neon Postgres (cloud) / SQLite (lokal opsional) |
-| Deploy | Cloud Run (FrankenPHP) di `asia-southeast1` |
+| Deploy | Oracle Cloud Free Tier VM (FrankenPHP + Caddy + Reverb di docker-compose) |
 
 ---
 
@@ -186,42 +198,48 @@ Untuk SMTP real, lihat [`backend/MAIL_SETUP.md`](./backend/MAIL_SETUP.md).
 
 ---
 
-## Re-deploy Backend
+## Re-deploy Backend (Oracle Cloud)
+
+Panduan lengkap setup pertama kali: [`ORACLE_DEPLOY.md`](./ORACLE_DEPLOY.md).
+
+Untuk update code (setelah VM Oracle sudah running):
 
 ```powershell
-cd Z:\PROJECTS\VsCode\Mangansage
-$tag = 'asia-southeast1-docker.pkg.dev/galangpramudito-496322/mangansage/backend:latest'
-gcloud builds submit --tag $tag backend
-gcloud run deploy mangansage-api --image $tag --region asia-southeast1
+# Set env var sekali (atau pass -VmIp tiap kali)
+$env:ORACLE_VM_IP   = "<VM_PUBLIC_IP>"
+$env:ORACLE_VM_USER = "ubuntu"
+$env:ORACLE_SSH_KEY = "$HOME\.ssh\oracle_vm"
+
+# Deploy: tar → upload → docker compose up --build -d
+.\deploy.ps1
 ```
 
-Atau pakai shortcut:
-```powershell
-.\deploy.bat
+Operasi umum di VM (via SSH):
+```bash
+cd ~/mangansage
+docker compose logs -f app                          # tail logs
+docker compose exec app php artisan migrate --force # run migration
+docker compose exec app php artisan tinker          # REPL
+docker compose restart app                          # restart 1 service
+docker compose down && docker compose up -d         # full restart
 ```
 
-Setelah edit migration:
-```powershell
-cd backend
-# Pakai endpoint Neon DIRECT (tanpa -pooler) untuk DDL
-php artisan migrate --force
-# Lalu rebuild & redeploy
-```
-
-Update env var saja (tanpa rebuild):
-```powershell
-gcloud run services update mangansage-api --region asia-southeast1 `
-  --env-vars-file backend\.docker\local.env.yaml
-```
+> **Cloud Run** sudah tidak dipakai. File `deploy.bat` lama sekarang redirect ke `deploy.ps1`.
 
 ---
 
 ## Production Endpoint
 
+Sedang migrasi ke Oracle Cloud (lihat [`ORACLE_DEPLOY.md`](./ORACLE_DEPLOY.md)). Cloud Run lama:
 ```
-API:    https://mangansage-api-722613562569.asia-southeast1.run.app
-Region: asia-southeast1 (Singapore)
-DB:     Neon Postgres (ap-southeast-1)
+API:    https://mangansage-api-722613562569.asia-southeast1.run.app  (HTTP 503 — billing disabled)
+```
+
+Setelah Oracle aktif, endpoint baru akan jadi:
+```
+API:    https://<DOMAIN>             (atau http://<VM_IP> kalau IP-only)
+Region: asia-singapore-1 / asia-tokyo-1 (Oracle)
+DB:     Neon Postgres (ap-southeast-1, tidak berubah)
 ```
 
 Schema migrated, 3 user seeded (`andi@`, `budi@`, `citra@mangansage.test` — password `password123`). User seeded sudah di-flag `email_verified=true` jadi bisa langsung login.
@@ -237,8 +255,11 @@ Mangansage/
 ├── design-spec.md            # spec desain
 ├── EMAIL_VERIFICATION.md     # detail flow email verification
 ├── PASSWORD_RESET.md         # detail flow password reset
+├── ORACLE_DEPLOY.md          # panduan deploy Oracle Cloud
 ├── JANGAN-FIREBASE.md        # aturan: Firebase HANYA untuk FCM
-├── deploy.bat                # shortcut deploy ke Cloud Run
+├── deploy.ps1                # deploy script ke Oracle VM (pengganti deploy.bat)
+├── deploy.bat                # DEPRECATED — redirect ke deploy.ps1
+├── oracle-vm-bootstrap.sh    # first-run setup VM Oracle (install Docker, firewall)
 ├── logo_mangansage.png
 │
 ├── app/                      # Flutter (Android & iOS)
@@ -276,11 +297,17 @@ Mangansage/
     │   └── channels.php
     ├── database/migrations/
     ├── tests/
-    ├── Dockerfile            # FrankenPHP image untuk Cloud Run
+    ├── Dockerfile            # FrankenPHP image untuk Oracle VM (juga build di lokal)
+    ├── docker-compose.yml    # orkestrasi: caddy + app + reverb + queue
+    ├── Caddyfile             # reverse proxy + auto HTTPS Let's Encrypt
+    ├── .env.production.example  # template env produksi (di VM)
+    ├── .dockerignore         # exclude vendor/node_modules dari upload
     ├── MAIL_SETUP.md
     └── .docker/
-        ├── start.sh
-        └── local.env.yaml    # gitignored — env vars Cloud Run
+        ├── start.sh          # entrypoint app (FrankenPHP)
+        ├── reverb.sh         # entrypoint reverb (WebSocket)
+        ├── worker.sh         # entrypoint queue worker
+        └── local.env.yaml    # gitignored — legacy Cloud Run env (boleh dihapus)
 ```
 
 ---
@@ -315,7 +342,7 @@ Seeder akan generate 3 user dummy yang sudah `email_verified=true` (siap login).
 - [ ] Search bar collapse-on-scroll di Inbox
 - [ ] Presence channel (status online realtime via Reverb)
 - [ ] Push notif scheduling (kalau pakai queue worker)
-- [ ] Re-aktivasi billing GCP untuk pulihkan production endpoint
+- [ ] **Setup Oracle Cloud VM** (lihat `ORACLE_DEPLOY.md`) — gantikan Cloud Run yang billing-nya di-disable
 
 ### Trade-offs Saat Ini
 - Listener `SendFcmOnMessageSent` sync (bukan `ShouldQueue`) — sederhana untuk dev, ~100-200ms FCM call. Production: switch ke `ShouldQueue` + `queue:work`.

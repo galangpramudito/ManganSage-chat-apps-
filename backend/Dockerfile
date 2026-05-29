@@ -1,10 +1,11 @@
-# Mangansage backend — production container image untuk Cloud Run.
+# Mangansage backend — production container image untuk Oracle Cloud VM.
 #
-# Stack: FrankenPHP (Caddy + PHP terpadu, single binary) — sederhana, cepat,
-# dan cocok untuk Cloud Run yang scale-to-zero.
+# Stack: FrankenPHP (Caddy + PHP terpadu, single binary).
+# Image dipakai 3x oleh docker-compose: app (FrankenPHP), reverb (WS), queue (worker).
 #
-# Build:  gcloud builds submit --tag <ARTIFACT_REGISTRY_IMAGE> backend
-# Run:    gcloud run deploy mangansage-api --image <IMAGE> --region asia-southeast1
+# Build (dari folder backend/):
+#   docker build -t mangansage-app:latest .
+# Atau via compose: docker compose build
 
 # Stage 1: Build frontend assets
 FROM node:20-alpine AS node_builder
@@ -58,15 +59,22 @@ RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Entrypoint: cache config/route, lalu jalankan FrankenPHP.
+# Entrypoint scripts: app server, reverb server, queue worker.
 COPY .docker/start.sh /start.sh
 COPY .docker/worker.sh /worker.sh
 COPY .docker/reverb.sh /reverb.sh
 RUN chmod +x /start.sh /worker.sh /reverb.sh
 
-# Cloud Run inject PORT env var (default 8080). FrankenPHP akan listen di
-# `:{$PORT}` lewat Caddyfile default-nya kalau SERVER_NAME=":{$PORT}".
-ENV SERVER_NAME=":8080"
-EXPOSE 8080
+# Default: jalankan FrankenPHP di port 8000.
+# Override via docker-compose `environment.SERVER_NAME` (mis. ":8000") atau `command`.
+ENV SERVER_NAME=":8000"
+EXPOSE 8000 8080
+
+# Healthcheck — Caddy ngecek port 8000 atau 8080 (tergantung service).
+# Kalau gagal 3x berturut → container di-mark unhealthy → docker akan restart.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:8000/up 2>/dev/null \
+        || wget -q --spider http://127.0.0.1:8080 2>/dev/null \
+        || exit 1
 
 CMD ["/start.sh"]

@@ -30,3 +30,12 @@ Thumbs.db
 .cloud-run-app-key
 .docker/local.env
 .docker/local.env.yaml
+.docker/production.env.yaml
+.docker/production.env
+
+# Oracle Cloud deploy secrets
+.env.production
+.env.staging
+deploy.tar
+oracle-vm.key
+oracle-vm.key.pub

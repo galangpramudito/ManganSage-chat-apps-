@@ -1,0 +1,91 @@
+# Mangansage — Docker Compose untuk Oracle Cloud VM
+#
+# Service:
+#   caddy   — reverse proxy + auto-HTTPS (port 80, 443)
+#   app     — Laravel API (FrankenPHP), internal port 8000
+#   reverb  — WebSocket server, internal port 8080
+#   queue   — queue worker (boleh comment-out kalau pakai sync listeners)
+#
+# Volume:
+#   caddy_data    — Let's Encrypt certs (HARUS persist)
+#   caddy_config  — Caddy state
+#   app_storage   — Laravel storage (avatars, logs, framework cache)
+#
+# Usage di VM:
+#   docker compose up --build -d        # build + start (foreground build, background run)
+#   docker compose logs -f app          # tail log app
+#   docker compose ps                   # status
+#   docker compose down                 # stop semua (data tetap ada di volume)
+#   docker compose exec app php artisan migrate --force
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    env_file:
+      - .env.production
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - app_storage:/srv/storage:ro
+    depends_on:
+      - app
+      - reverb
+    networks:
+      - mangansage
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mangansage-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      SERVER_NAME: ":8000"
+    volumes:
+      - app_storage:/app/storage
+    command: ["/start.sh"]
+    expose:
+      - "8000"
+    networks:
+      - mangansage
+
+  reverb:
+    image: mangansage-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: ["/reverb.sh"]
+    expose:
+      - "8080"
+    depends_on:
+      - app
+    networks:
+      - mangansage
+
+  queue:
+    image: mangansage-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: ["/worker.sh"]
+    depends_on:
+      - app
+    networks:
+      - mangansage
+
+volumes:
+  caddy_data:
+  caddy_config:
+  app_storage:
+
+networks:
+  mangansage:
+    driver: bridge

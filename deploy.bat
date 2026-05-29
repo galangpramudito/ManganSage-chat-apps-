@@ -1,38 +1,19 @@
 @echo off
-echo ========================================
-echo   Deploying ManganSage to Cloud Run
-echo ========================================
-echo.
-
-cd backend
-
-gcloud run deploy mangansage-api ^
-  --source . ^
-  --region asia-southeast1 ^
-  --allow-unauthenticated ^
-  --port 8080 ^
-  --memory 1Gi ^
-  --cpu 1 ^
-  --timeout 300 ^
-  --min-instances 0 ^
-  --max-instances 10 ^
-  --env-vars-file .docker\production.env.yaml ^
-  --quiet
-
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Deployment failed!
-    pause
-    exit /b 1
-)
-
-cd ..
+REM ────────────────────────────────────────────────────────────────────────
+REM  deploy.bat — DEPRECATED, redirect ke deploy.ps1 (Oracle Cloud)
+REM ────────────────────────────────────────────────────────────────────────
+REM  Project sudah migrasi dari Cloud Run → Oracle Cloud VM.
+REM  Lihat ORACLE_DEPLOY.md untuk panduan lengkap.
+REM ────────────────────────────────────────────────────────────────────────
 
 echo.
-echo ========================================
-echo          DEPLOYMENT COMPLETE!
-echo ========================================
+echo [DEPRECATED] deploy.bat sudah tidak dipakai (Cloud Run dropped).
 echo.
-echo Admin UI: https://mangansage-api-722613562569.asia-southeast1.run.app/admin/users
+echo Oracle Cloud deploy:
+echo   .\deploy.ps1 -VmIp ^<VM_PUBLIC_IP^>
+echo.
+echo Setup pertama kali:
+echo   Lihat ORACLE_DEPLOY.md
 echo.
 pause
+exit /b 1

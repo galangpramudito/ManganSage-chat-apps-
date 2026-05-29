@@ -1,49 +1,49 @@
-# Excluded from Docker build context — keep image lean & secure.
+# File yang TIDAK perlu dikirim ke VM Oracle saat deploy.
+# Dipakai oleh `docker build` (di server) dan oleh `deploy.ps1` (untuk tar streaming).
 
-# Composer + Node build artifacts (re-installed in the image)
+# Dependencies — di-install fresh di container
 vendor/
 node_modules/
 
-# Local env (CRITICAL — credentials must NOT bake into image; pass via Cloud Run env vars)
+# Local dev artifacts
 .env
-.env.*
-.cloud-run-app-key
+.env.local
+.env.testing
+.env.backup
+.env.production
+.docker/local.env*
+.docker/production.env*
 
-# Laravel runtime artifacts (created at startup)
-storage/logs/*
-!storage/logs/.gitignore
+# Build artifacts
+public/build/
+public/hot
+public/storage
+
+# Generated cache
+bootstrap/cache/*.php
+storage/framework/cache/data/*
 storage/framework/sessions/*
-!storage/framework/sessions/.gitignore
-storage/framework/cache/*
-!storage/framework/cache/.gitignore
 storage/framework/views/*
-!storage/framework/views/.gitignore
-storage/app/*
-!storage/app/.gitignore
-storage/app/public/*
+storage/logs/*
 
-# Local dev DB (kita pakai Neon di production)
-database/database.sqlite
-database/*.sqlite-journal
-
-# Tests + dev configs
+# Tests (tidak diperlukan di production)
 tests/
 phpunit.xml
-.phpunit.result.cache
 
-# Editor / VCS
+# Git
 .git/
-.gitattributes
 .gitignore
+.gitattributes
+
+# IDE
 .idea/
 .vscode/
-*.iml
+.fleet/
 
-# Docker artifacts
-docker-compose*.yml
-Dockerfile*
-.dockerignore
+# OS
+.DS_Store
+Thumbs.db
 
-# Documentation
-README*.md
+# Documentation (kecuali README di-include)
 *.md
+!README.md

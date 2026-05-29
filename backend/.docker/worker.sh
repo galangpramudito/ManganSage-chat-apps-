@@ -1,9 +1,13 @@
 #!/bin/sh
-# Cloud Run worker startup script
+# Laravel queue worker — dipanggil dari container `queue` di docker-compose.
+#
+# Auto-restart oleh Docker kalau crash (restart: unless-stopped).
+# Tidak butuh dummy HTTP server (itu khusus Cloud Run health check).
+set -e
 
-# Jalankan dummy web server di background agar Cloud Run mendeteksi port 8080 terbuka (health check pass)
-php -S 0.0.0.0:${PORT:-8080} -t public &
+# Cache config + event.
+php artisan config:cache
+php artisan event:cache
 
-# Jalankan queue worker di foreground. Jika crash/berhenti, container akan mati dan di-restart otomatis oleh Cloud Run.
 echo "Starting Laravel Queue Worker..."
-exec php artisan queue:work --tries=3 --max-time=3600
+exec php artisan queue:work --tries=3 --max-time=3600 --sleep=3

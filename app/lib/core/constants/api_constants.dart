@@ -19,11 +19,14 @@
 class ApiConstants {
   ApiConstants._();
 
-  /// Base URL HTTP API Laravel di Cloud Run (asia-southeast1).
+  /// Base URL HTTP API Laravel.
+  ///
+  /// Default: local dev (Android emulator → host laptop di port 8000).
+  /// Production: override saat build:
+  ///   flutter build apk --release --dart-define=API_BASE_URL=https://api.yourdomain.com/api
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue:
-        'https://mangansage-api-722613562569.asia-southeast1.run.app/api',
+    defaultValue: 'http://10.0.2.2:8000/api',
   );
 
   // ─── Auth ────────────────────────────────────────────────────────────────

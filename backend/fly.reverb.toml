@@ -1,0 +1,24 @@
+# Fly.io — Mangansage Reverb (WebSocket)
+# Reuses the SAME FrankenPHP Dockerfile, but runs /reverb.sh (php artisan reverb:start on :8080).
+# Deploy:  fly deploy --config fly.reverb.toml
+app = "mangansage-reverb"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Override the image CMD (/start.sh) with the Reverb entrypoint.
+[processes]
+  app = "/reverb.sh"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"   # WebSocket must stay alive — never sleep
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

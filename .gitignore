@@ -1,0 +1,32 @@
+# Credentials & secrets — never commit
+*.env.production
+.env.production
+.env.staging
+.env
+.env.*
+!.env.example
+!*.env.production.example
+
+# Fly.io / cloud secret dumps
+fly.secrets
+*.secrets
+
+# Oracle Cloud / SSH keys
+oracle-vm.key
+oracle-vm.key.pub
+*.pem
+*.key
+.cloud-run-app-key
+
+# Deploy artifacts
+deploy.tar
+
+# Docker env files with secrets
+**/.docker/local.env*
+**/.docker/production.env*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
