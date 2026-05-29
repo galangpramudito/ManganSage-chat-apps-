@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config — Mangansage.
+
+  Default: HTTPS-only (`cleartextTrafficPermitted=false`). Production traffic
+  ke Cloud Run otomatis enkripsi.
+
+  Whitelist host dev untuk cleartext (HTTP) supaya `flutter run` ke backend
+  lokal tetap kerja:
+    - localhost / 127.0.0.1     → host machine (kalau ada port forwarding)
+    - 10.0.2.2                  → loopback Android emulator ke host
+    - 192.168.x.x               → LAN IP laptop (real device di WiFi sama)
+
+  Kalau IP LAN laptop kamu beda, edit `<domain>` di bawah.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- LAN IPs umum (Class C). Aman karena terbatas pada subnet rumah. -->
+        <domain-config>
+            <domain includeSubdomains="false">192.168.0.1</domain>
+        </domain-config>
+    </domain-config>
+
+    <!--
+      Untuk LAN IP spesifik, tambahkan domain-config sendiri, mis:
+        <domain-config cleartextTrafficPermitted="true">
+            <domain includeSubdomains="false">192.168.100.13</domain>
+        </domain-config>
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.100.13</domain>
+    </domain-config>
+</network-security-config>

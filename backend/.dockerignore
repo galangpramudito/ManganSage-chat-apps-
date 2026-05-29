@@ -1,0 +1,49 @@
+# Excluded from Docker build context — keep image lean & secure.
+
+# Composer + Node build artifacts (re-installed in the image)
+vendor/
+node_modules/
+
+# Local env (CRITICAL — credentials must NOT bake into image; pass via Cloud Run env vars)
+.env
+.env.*
+.cloud-run-app-key
+
+# Laravel runtime artifacts (created at startup)
+storage/logs/*
+!storage/logs/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+storage/app/*
+!storage/app/.gitignore
+storage/app/public/*
+
+# Local dev DB (kita pakai Neon di production)
+database/database.sqlite
+database/*.sqlite-journal
+
+# Tests + dev configs
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Editor / VCS
+.git/
+.gitattributes
+.gitignore
+.idea/
+.vscode/
+*.iml
+
+# Docker artifacts
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Documentation
+README*.md
+*.md
