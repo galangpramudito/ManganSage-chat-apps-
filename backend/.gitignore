@@ -39,3 +39,11 @@ Thumbs.db
 deploy.tar
 oracle-vm.key
 oracle-vm.key.pub
+
+# Credentials — per ROTATE-CREDENTIALS.md §6
+.env.*
+!.env.example
+storage/firebase-credentials.json
+storage/*.json
+*.pem
+*.key

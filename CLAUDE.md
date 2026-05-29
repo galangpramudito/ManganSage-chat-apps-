@@ -41,7 +41,8 @@ Mangansage/
 | Backend | Laravel 13 + PHP 8.3 |
 | Database server | Neon (PostgreSQL serverless) |
 | Database lokal | SQLite via sqflite |
-| Deploy | Fly.io (2 app: API + Reverb) |
+| Deploy | Fly.io (2 app: `mangansage-api` + `mangansage-reverb`) |
+| Container | FrankenPHP (Caddy + PHP, single Dockerfile untuk API & Reverb) |
 
 ---
 
@@ -188,6 +189,8 @@ Detail lengkap: `deploy-guide-flyio.md`
 
 File TOML ada di `backend/`. **Jangan ubah nilai ini sembarangan.**
 
+> ⚠️ **`Dockerfile.reverb` sudah dihapus.** Reverb pakai Dockerfile yang sama dengan API, tapi CMD di-override via `[experimental] cmd`.
+
 ### `backend/fly.toml` — Laravel API
 ```toml
 app = "mangansage-api"
@@ -195,6 +198,22 @@ primary_region = "sin"
 
 [build]
   dockerfile = "Dockerfile"
+
+[env]
+  SERVER_NAME = ":8080"
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  APP_URL = "https://mangansage-api.fly.dev"
+  DB_CONNECTION = "pgsql"
+  DB_PORT = "5432"
+  DB_SSLMODE = "require"
+  BROADCAST_CONNECTION = "reverb"
+  REVERB_HOST = "mangansage-reverb.fly.dev"
+  REVERB_PORT = "443"
+  REVERB_SCHEME = "https"
+  QUEUE_CONNECTION = "sync"
+  CACHE_STORE = "file"
+  SESSION_DRIVER = "file"
 
 [http_service]
   internal_port = 8080
@@ -220,7 +239,25 @@ app = "mangansage-reverb"
 primary_region = "sin"
 
 [build]
-  dockerfile = "Dockerfile.reverb"
+  dockerfile = "Dockerfile"     # pakai Dockerfile yang SAMA, bukan Dockerfile.reverb
+
+[experimental]
+  cmd = ["/reverb.sh"]          # override CMD — jalankan reverb.sh bukan start.sh
+
+[env]
+  SERVER_NAME = ":8080"
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  DB_CONNECTION = "pgsql"
+  DB_PORT = "5432"
+  DB_SSLMODE = "require"
+  BROADCAST_CONNECTION = "reverb"
+  REVERB_HOST = "0.0.0.0"
+  REVERB_PORT = "8080"
+  REVERB_SCHEME = "http"        # Fly.io handle SSL di edge
+  QUEUE_CONNECTION = "sync"
+  CACHE_STORE = "file"
+  SESSION_DRIVER = "file"
 
 [http_service]
   internal_port = 8080
@@ -243,5 +280,6 @@ primary_region = "sin"
 ### Kenapa konfigurasi ini?
 - **API sleep (`min_machines_running = 0`)** — Laravel stateless, aman tidur. Bangun otomatis ~1-2 detik saat ada request. Gratis saat idle.
 - **Reverb selalu hidup (`min_machines_running = 1`)** — WebSocket butuh koneksi persisten. Kalau tidur, semua client disconnect.
+- **Satu Dockerfile untuk keduanya** — Reverb pakai image yang sama, CMD di-override ke `/reverb.sh`.
 - **256MB untuk keduanya** — masuk free allowance Fly.io. Total 2 app × 256MB = dalam batas gratis.
 - **Jangan scale memory** kecuali ada bottleneck nyata yang terukur.
