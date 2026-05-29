@@ -4,9 +4,21 @@ primary_region = "sin"
 [build]
   dockerfile = "Dockerfile"
 
-# FrankenPHP listens on SERVER_NAME; set to :8080 to match internal_port below.
 [env]
   SERVER_NAME = ":8080"
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  APP_URL = "https://mangansage-api.fly.dev"
+  DB_CONNECTION = "pgsql"
+  DB_PORT = "5432"
+  DB_SSLMODE = "require"
+  BROADCAST_CONNECTION = "reverb"
+  REVERB_HOST = "mangansage-reverb.fly.dev"
+  REVERB_PORT = "443"
+  REVERB_SCHEME = "https"
+  QUEUE_CONNECTION = "sync"
+  CACHE_STORE = "file"
+  SESSION_DRIVER = "file"
 
 [http_service]
   internal_port = 8080
