@@ -20,26 +20,21 @@ class ProfileNotifier extends _$ProfileNotifier {
     String? name,
     String? avatar,
   }) async {
-    state = const AsyncLoading();
+    // Ambil dependency dari `ref` SEBELUM await. Provider ini autoDispose;
+    // kalau `ref`/`state` disentuh setelah await bisa kena "used after dispose".
+    final dio = ref.read(dioProvider);
+    final authNotifier = ref.read(authNotifierProvider.notifier);
 
-    try {
-      final dio = ref.read(dioProvider);
-      final body = <String, dynamic>{};
-      if (name != null) body['name'] = name;
-      if (avatar != null) body['avatar'] = avatar;
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (avatar != null) body['avatar'] = avatar;
 
-      final res = await dio.put<Map<String, dynamic>>(
-        ApiConstants.profile,
-        data: body,
-      );
+    final res = await dio.put<Map<String, dynamic>>(
+      ApiConstants.profile,
+      data: body,
+    );
 
-      final updatedUser = User.fromJson(res.data!['user'] as Map<String, dynamic>);
-      ref.read(authNotifierProvider.notifier).state = AsyncData(updatedUser);
-
-      state = const AsyncData(null);
-    } catch (e, st) {
-      state = AsyncError(e, st);
-      rethrow;
-    }
+    final updatedUser = User.fromJson(res.data!['user'] as Map<String, dynamic>);
+    authNotifier.state = AsyncData(updatedUser);
   }
 }

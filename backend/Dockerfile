@@ -7,15 +7,7 @@
 #   docker build -t mangansage-app:latest .
 # Atau via compose: docker compose build
 
-# Stage 1: Build frontend assets
-FROM node:20-alpine AS node_builder
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci || npm install
-COPY . .
-RUN npm run build
-
-# Stage 2: Build PHP container
+# Build PHP container
 FROM dunglas/frankenphp:latest
 
 # System tools yang dibutuhkan composer untuk extract package + (optional) source.
@@ -48,9 +40,6 @@ RUN composer install \
 
 # Salin source app.
 COPY . .
-
-# Salin frontend build dari stage node_builder
-COPY --from=node_builder /app/public/build ./public/build
 
 # Optimisasi autoloader untuk produksi.
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
