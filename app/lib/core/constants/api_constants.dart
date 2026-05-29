@@ -1,7 +1,7 @@
 /// Konstanta endpoint & konfigurasi backend.
 ///
-/// Default: production Cloud Run + WebSocket non-aktif.
-/// `flutter run` tanpa flag akan langsung connect ke server cloud.
+/// Default: production Fly.io (API + Reverb WebSocket aktif via TLS).
+/// `flutter run`/`build` tanpa flag akan langsung connect ke server cloud.
 ///
 /// Untuk dev lokal, override via `--dart-define`:
 ///
@@ -9,6 +9,7 @@
 /// --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
 /// --dart-define=REVERB_HOST=10.0.2.2
 /// --dart-define=REVERB_PORT=8080
+/// --dart-define=REVERB_FORCE_TLS=false
 /// --dart-define=REVERB_APP_KEY=COPY_FROM_BACKEND_ENV
 /// ```
 ///
@@ -21,12 +22,11 @@ class ApiConstants {
 
   /// Base URL HTTP API Laravel.
   ///
-  /// Default: local dev (Android emulator → host laptop di port 8000).
-  /// Production: override saat build:
-  ///   flutter build apk --release --dart-define=API_BASE_URL=https://api.yourdomain.com/api
+  /// Default: production Fly.io. Untuk dev lokal override saat build:
+  ///   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000/api',
+    defaultValue: 'https://mangansage-api.fly.dev/api',
   );
 
   // ─── Auth ────────────────────────────────────────────────────────────────
@@ -63,23 +63,24 @@ class ApiConstants {
   static const String broadcastingAuth = '/broadcasting/auth';
 
   // ─── Reverb / WebSocket ──────────────────────────────────────────────────
-  /// Default kosong = WebSocket dinonaktifkan. Belum ada Reverb di cloud.
+  /// Default: production Reverb di Fly.io (TLS port 443).
   /// Override untuk dev lokal (lihat `RealtimeService`).
   static const String reverbHost = String.fromEnvironment(
     'REVERB_HOST',
-    defaultValue: '',
+    defaultValue: 'mangansage-reverb.fly.dev',
   );
   static const int reverbPort = int.fromEnvironment(
     'REVERB_PORT',
-    defaultValue: 8080,
+    defaultValue: 443,
   );
+  /// Pusher *client* key (public — dikirim di URL `/app/{key}`, bukan secret).
   static const String reverbKey = String.fromEnvironment(
     'REVERB_APP_KEY',
-    defaultValue: '',
+    defaultValue: '85m3xr92ezs4ayj0hfl7utc1knvqdiog',
   );
   static const bool reverbForceTLS = bool.fromEnvironment(
     'REVERB_FORCE_TLS',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   /// Kalau host atau key kosong → WebSocket layer skip init.

@@ -1,19 +1,34 @@
 @echo off
 REM ────────────────────────────────────────────────────────────────────────
-REM  deploy.bat — DEPRECATED, redirect ke deploy.ps1 (Oracle Cloud)
+REM  deploy.bat — Deploy Mangansage ke Fly.io (API + Reverb)
+REM
+REM  Commit & push ke GitHub dilakukan manual SEBELUM ini. File ini deploy saja.
+REM
+REM  Pakai:
+REM    deploy.bat            -> deploy API + Reverb
+REM    deploy.bat migrate    -> deploy, lalu jalankan migrasi
 REM ────────────────────────────────────────────────────────────────────────
-REM  Project sudah migrasi dari Cloud Run → Oracle Cloud VM.
-REM  Lihat ORACLE_DEPLOY.md untuk panduan lengkap.
-REM ────────────────────────────────────────────────────────────────────────
+setlocal
+set ROOT=%~dp0
+set DOMIGRATE=
+if /i "%1"=="migrate" set DOMIGRATE=1
+
+echo === Deploy API ===
+fly deploy -c "%ROOT%backend\fly.toml" --app mangansage-api || goto :fail
+
+echo === Deploy Reverb ===
+fly deploy -c "%ROOT%backend\fly.reverb.toml" --app mangansage-reverb || goto :fail
+
+if defined DOMIGRATE (
+    echo === Migrasi DB ===
+    fly ssh console --app mangansage-api -C "php artisan migrate --force" || goto :fail
+)
 
 echo.
-echo [DEPRECATED] deploy.bat sudah tidak dipakai (Cloud Run dropped).
+echo Selesai. API: https://mangansage-api.fly.dev
+exit /b 0
+
+:fail
 echo.
-echo Oracle Cloud deploy:
-echo   .\deploy.ps1 -VmIp ^<VM_PUBLIC_IP^>
-echo.
-echo Setup pertama kali:
-echo   Lihat ORACLE_DEPLOY.md
-echo.
-pause
+echo [GAGAL] Deploy berhenti karena error di atas.
 exit /b 1
