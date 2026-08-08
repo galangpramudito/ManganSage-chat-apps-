@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/primary_button.dart';
 import '../data/auth_exception.dart';
 import '../providers/auth_notifier.dart';
 
@@ -17,7 +16,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _namaCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   String? _generalError;
@@ -25,7 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _namaCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -40,10 +39,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       await ref.read(authNotifierProvider.notifier).login(
-            email: _emailCtrl.text.trim(),
+            nama: _namaCtrl.text.trim(),
             password: _passwordCtrl.text,
           );
-      // Router akan auto-redirect via refreshListenable.
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -57,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -69,32 +68,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white : Colors.black,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        'MNG SQUAD // AUTH',
+                        style: GoogleFonts.montserrat(
+                          color: isDark ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    'Mangansage',
-                    style: AppTypography.profileName,
+                    'MANGAN GROUP',
+                    style: AppTypography.headingTitle(isDark).copyWith(fontSize: 26),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: 4),
                   Text(
-                    'Masuk untuk lanjut',
+                    'Valorant Division Official Sync Portal',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium,
+                    style: AppTypography.bodyText(isDark),
                   ),
                   const SizedBox(height: AppSpacing.xl),
+                  if (_generalError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        _generalError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
                   TextFormField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
+                    controller: _namaCtrl,
+                    keyboardType: TextInputType.text,
                     enabled: !isLoading,
                     decoration: InputDecoration(
-                      labelText: 'Email',
-                      errorText: _fieldErrors['email']?.firstOrNull,
-                      border: const OutlineInputBorder(),
+                      labelText: 'CODENAME (NAMA IN-GAME)',
+                      errorText: _fieldErrors['nama']?.firstOrNull,
                     ),
                     validator: (v) {
                       final value = v?.trim() ?? '';
-                      if (value.isEmpty) return 'Email wajib diisi.';
-                      if (!value.contains('@')) return 'Format email tidak valid.';
+                      if (value.isEmpty) return 'Codename wajib diisi.';
                       return null;
                     },
                   ),
@@ -102,43 +133,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: true,
-                    autofillHints: const [AutofillHints.password],
                     enabled: !isLoading,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: 'PASSWORD',
                       errorText: _fieldErrors['password']?.firstOrNull,
-                      border: const OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Password wajib diisi.' : null,
+                    validator: (v) {
+                      final value = v ?? '';
+                      if (value.isEmpty) return 'Password wajib diisi.';
+                      return null;
+                    },
                   ),
-                  if (_generalError != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      _generalError!,
-                      style: TextStyle(color: theme.colorScheme.error),
-                      textAlign: TextAlign.center,
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white : Colors.black,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                      ),
+                      onPressed: isLoading ? null : _submit,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                            )
+                          : Text(
+                              'TRANSMIT LOGIN',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
                     ),
-                  ],
-                  const SizedBox(height: AppSpacing.xl),
-                  PrimaryButton(
-                    label: 'Masuk',
-                    isLoading: isLoading,
-                    onPressed: _submit,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Center(
-                    child: TextButton(
-                      onPressed: isLoading
-                          ? null
-                          : () => context.push('/forgot-password'),
-                      child: const Text('Lupa password?'),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  TextButton(
-                    onPressed: isLoading ? null : () => context.go('/register'),
-                    child: const Text('Belum punya akun? Daftar'),
                   ),
                 ],
               ),

@@ -1,61 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens — typography
-/// Source: design-spec.md §2 (Tipografi)
-///
-/// Font utama: Inter (open-source, mendekati feel SF Pro).
-/// NOTE: Pastikan font Inter sudah ditambahkan di pubspec.yaml + assets.
 class AppTypography {
   AppTypography._();
 
-  static const String fontFamily = 'Inter';
+  // 1. Heading Utama (Montserrat Black Uppercase)
+  static TextStyle headingTitle(bool isDark) => GoogleFonts.montserrat(
+        fontSize: 24,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 2.0,
+        color: isDark ? Colors.white : Colors.black,
+      );
 
-  /// Header layar — Inter Bold 20
-  static const TextStyle screenHeader = TextStyle(
-    fontFamily: fontFamily,
+  // 2. Badge & Subtitle (Micro Uppercase with Wide Spacing)
+  static TextStyle badgeText(bool isDark) => GoogleFonts.inter(
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 2.5,
+        color: isDark ? Colors.white : Colors.black,
+      );
+
+  // 3. Body Text
+  static TextStyle bodyText(bool isDark) => GoogleFonts.inter(
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+        color: isDark ? const Color(0xFFA3A3A3) : const Color(0xFF525252),
+      );
+
+  // 4. Button Text
+  static TextStyle buttonText(bool isPrimaryDark) => GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 2.0,
+        color: isPrimaryDark ? Colors.black : Colors.white,
+      );
+
+  // Legacy static styles
+  static TextStyle screenHeader = GoogleFonts.montserrat(
     fontSize: 20,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w900,
+    letterSpacing: 1.5,
   );
 
-  /// Nama kontak — Inter SemiBold 16
-  static const TextStyle contactName = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
+  static TextStyle contactName = GoogleFonts.inter(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
   );
 
-  /// Preview pesan — Inter Regular 13 (muted)
-  static const TextStyle messagePreview = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle messagePreview = GoogleFonts.inter(
     fontSize: 13,
     fontWeight: FontWeight.w400,
   );
 
-  /// Isi pesan (bubble) — Inter Regular 15
-  static const TextStyle messageBody = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 15,
-    fontWeight: FontWeight.w400,
+  static TextStyle messageBody = GoogleFonts.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
   );
 
-  /// Timestamp — Inter Regular 11 (muted)
-  static const TextStyle timestamp = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle timestamp = GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w400,
   );
 
-  /// Indikator status — 11
-  static const TextStyle statusIndicator = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 11,
-    fontWeight: FontWeight.w400,
-  );
-
-  /// Header layar profil — Inter Bold 22
-  static const TextStyle profileName = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle profileName = GoogleFonts.montserrat(
     fontSize: 22,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w900,
+    letterSpacing: 1.5,
   );
 }
+

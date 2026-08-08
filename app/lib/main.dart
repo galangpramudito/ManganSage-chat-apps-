@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/notifications/alarm_service.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/router/app_router.dart';
+import 'core/supabase/supabase_service.dart';
 import 'core/theme/app_theme.dart';
-import 'core/websocket/realtime_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
+
+  // Inisialisasi Supabase resmi yang terhubung langsung ke web mngesports.my.id
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
 
   runApp(const ProviderScope(child: MangansageApp()));
 }
@@ -19,15 +27,14 @@ class MangansageApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Eager-watch realtime + fcm provider supaya keduanya ter-init sejak awal.
-    // Listener internal di tiap provider akan auto-connect saat user login.
-    ref.watch(realtimeServiceProvider);
+    // Eager-init FCM & Local Alarm Notification untuk match reminder
     ref.watch(fcmServiceProvider);
+    ref.watch(alarmServiceProvider);
 
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Mangansage',
+      title: 'MNG Squad',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
@@ -36,3 +43,4 @@ class MangansageApp extends ConsumerWidget {
     );
   }
 }
+

@@ -18,6 +18,12 @@ class SecureStorage {
   Future<String?> getToken() =>
       _storage.read(key: StorageKeys.sanctumToken);
 
+  Future<void> saveUserData(String data) =>
+      _storage.write(key: StorageKeys.currentUserId, value: data);
+
+  Future<String?> getUserData() =>
+      _storage.read(key: StorageKeys.currentUserId);
+
   Future<void> clear() => _storage.deleteAll();
 }
 

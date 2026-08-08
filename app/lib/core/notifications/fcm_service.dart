@@ -8,8 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_notifier.dart';
-import '../../features/messages/providers/active_conversation_provider.dart';
-import '../../shared/models/user.dart';
+import '../../shared/models/supabase_models.dart';
 import '../constants/api_constants.dart';
 import '../network/dio_client.dart';
 import '../router/app_router.dart';
@@ -99,15 +98,15 @@ class FcmService {
     if (initial != null) _onTap(initial);
 
     // Dengarkan auth state untuk auto-register/clear token.
-    _ref.listen<AsyncValue<User?>>(
+    _ref.listen<AsyncValue<SquadMember?>>(
       authNotifierProvider,
       (prev, next) {
         final prevId = switch (prev) {
-          AsyncData<User?>(:final value) => value?.id,
+          AsyncData<SquadMember?>(:final value) => value?.id,
           _ => null,
         };
         final nextId = switch (next) {
-          AsyncData<User?>(:final value) => value?.id,
+          AsyncData<SquadMember?>(:final value) => value?.id,
           _ => null,
         };
         if (prevId == nextId) return;
@@ -131,9 +130,7 @@ class FcmService {
     await _localNotif.initialize(
       settings: const InitializationSettings(android: androidInit, iOS: iosInit),
       onDidReceiveNotificationResponse: (resp) {
-        // Ketuk lokal-notif (foreground) → buka chat.
-        final convId = int.tryParse(resp.payload ?? '');
-        if (convId != null) _navigateToChat(convId);
+        _ref.read(routerProvider).go('/schedules');
       },
     );
 
@@ -165,21 +162,14 @@ class FcmService {
     }
   }
 
-  /// Foreground: kalau user TIDAK sedang di chat tersebut, tampilkan banner.
+  /// Foreground: tampilkan notifikasi jadwal match atau pengumuman squad
   void _onForeground(RemoteMessage message) {
-    final convIdStr = message.data['conversation_id']?.toString();
-    final convId = int.tryParse(convIdStr ?? '');
-    final activeId = _ref.read(activeConversationProvider);
-
-    // Suppress kalau user sudah di conversation tersebut.
-    if (convId != null && convId == activeId) return;
-
     final n = message.notification;
     if (n == null) return;
 
     _localNotif.show(
       id: message.hashCode,
-      title: n.title,
+      title: n.title ?? 'MNG Squad',
       body: n.body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
@@ -191,21 +181,13 @@ class FcmService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
-      payload: convIdStr,
     );
   }
 
   void _onTap(RemoteMessage message) {
-    final convId = int.tryParse(message.data['conversation_id']?.toString() ?? '');
-    if (convId != null) _navigateToChat(convId);
-  }
-
-  void _navigateToChat(int convId) {
     try {
-      _ref.read(routerProvider).push('/chat/$convId');
-    } catch (e) {
-      debugPrint('[FCM] navigate failed: $e');
-    }
+      _ref.read(routerProvider).go('/schedules');
+    } catch (_) {}
   }
 }
 

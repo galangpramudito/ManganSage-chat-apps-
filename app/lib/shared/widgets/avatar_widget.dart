@@ -12,14 +12,14 @@ import '../utils/initials.dart';
 class AvatarWidget extends StatelessWidget {
   const AvatarWidget({
     super.key,
-    required this.name,
+    required this.nama,
     this.emoji,
     this.size = AvatarSize.large,
     this.ringColor,
     this.ringWidth = 0,
   });
 
-  final String name;
+  final String nama;
 
   /// Emoji avatar (1–2 karakter). Null/empty → fallback ke inisial.
   final String? emoji;
@@ -32,8 +32,8 @@ class AvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = Initials.from(name);
-    final bgColor = Initials.colorFor(name);
+    final initials = Initials.from(nama);
+    final bgColor = Initials.colorFor(nama);
     final hasEmoji = emoji != null && emoji!.isNotEmpty;
 
     final inner = Container(

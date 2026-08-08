@@ -1,8 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/constants/api_constants.dart';
-import '../../../core/network/dio_client.dart';
-import '../../../shared/models/user.dart';
+import '../../../core/supabase/supabase_service.dart';
+import '../../../shared/models/supabase_models.dart';
 import 'auth_notifier.dart';
 
 part 'profile_notifier.g.dart';
@@ -14,27 +13,29 @@ class ProfileNotifier extends _$ProfileNotifier {
     // No initial state needed
   }
 
-  /// Update nama dan/atau emoji avatar. Dikirim sebagai JSON biasa —
-  /// tidak ada file/upload, jadi gratis (tanpa object storage).
   Future<void> updateProfile({
     String? name,
-    String? avatar,
   }) async {
-    // Ambil dependency dari `ref` SEBELUM await. Provider ini autoDispose;
-    // kalau `ref`/`state` disentuh setelah await bisa kena "used after dispose".
-    final dio = ref.read(dioProvider);
+    final supabase = ref.read(supabaseProvider);
     final authNotifier = ref.read(authNotifierProvider.notifier);
+    final currentUser = ref.read(authNotifierProvider).value;
+
+    if (currentUser == null) return;
 
     final body = <String, dynamic>{};
-    if (name != null) body['name'] = name;
-    if (avatar != null) body['avatar'] = avatar;
+    if (name != null) body['nama'] = name;
+    
+    if (body.isEmpty) return;
+    body['updated_at'] = DateTime.now().toIso8601String();
 
-    final res = await dio.put<Map<String, dynamic>>(
-      ApiConstants.profile,
-      data: body,
-    );
+    final res = await supabase
+        .from('squad_members')
+        .update(body)
+        .eq('id', currentUser.id)
+        .select()
+        .single();
 
-    final updatedUser = User.fromJson(res.data!['user'] as Map<String, dynamic>);
+    final updatedUser = SquadMember.fromJson(res);
     authNotifier.state = AsyncData(updatedUser);
   }
 }

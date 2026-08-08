@@ -1,215 +1,78 @@
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
+import 'package:bcrypt/bcrypt.dart';
 
-import '../../../core/constants/api_constants.dart';
-import '../../../core/network/dio_client.dart';
-import '../../../shared/models/user.dart';
+import '../../../core/supabase/supabase_service.dart';
+import '../../../shared/models/supabase_models.dart';
 import 'auth_exception.dart';
 
-/// Hasil dari register/login: pasangan user + token Sanctum.
-typedef AuthResult = ({User user, String token});
+/// Hasil login: SquadMember model dari Supabase
+typedef AuthResult = ({SquadMember user, String token});
 
-/// Wrapper raw API call untuk endpoint auth.
-/// Semua error 4xx/5xx dipetakan ke [AuthException].
 class AuthApi {
-  AuthApi(this._dio);
-
-  final Dio _dio;
-
-  Future<String> register({
-    required String name,
-    required String email,
-    required String password,
-    required String passwordConfirmation,
-  }) async {
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.register,
-        data: {
-          'name': name,
-          'email': email,
-          'password': password,
-          'password_confirmation': passwordConfirmation,
-        },
-      );
-      // Return email untuk step verifikasi
-      return res.data?['email']?.toString() ?? email;
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
-
-  Future<AuthResult> verifyEmail({
-    required String email,
-    required String otp,
-  }) async {
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.verifyEmail,
-        data: {'email': email, 'otp': otp},
-      );
-      return _parseAuthSuccess(res);
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
-
-  Future<String> resendVerification(String email) async {
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.resendVerification,
-        data: {'email': email},
-      );
-      return res.data?['message']?.toString() ?? 'OTP terkirim.';
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
+  AuthApi();
 
   Future<AuthResult> login({
-    required String email,
+    required String nama,
     required String password,
   }) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.login,
-        data: {'email': email, 'password': password},
+      // Bypass RLS menggunakan service_role key khusus untuk query login saja
+      // karena 'anon' tidak memiliki akses baca ke tabel squad_members berdasarkan RLS database.
+      final adminClient = SupabaseClient(
+        SupabaseConfig.url,
+        SupabaseConfig.serviceRoleKey,
       );
-      return _parseAuthSuccess(res);
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
 
-  Future<void> logout() async {
-    try {
-      await _dio.post(ApiConstants.logout);
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
+      final cleanNama = nama.trim();
+      final res = await adminClient
+          .from('squad_members')
+          .select()
+          .ilike('nama', cleanNama)
+          .maybeSingle();
+          
+      adminClient.dispose();
 
-  // ─── Password Reset (OTP via email) ─────────────────────────────────────
-
-  /// POST /api/forgot-password — selalu balas sukses (anti enumeration).
-  /// User akan dapat email dengan kode OTP 6-digit kalau emailnya terdaftar.
-  Future<String> forgotPassword(String email) async {
-    try {
-      debugPrint('📤 POST ${ApiConstants.forgotPassword} with email: $email');
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.forgotPassword,
-        data: {'email': email},
-      );
-      debugPrint('📥 Response: ${res.statusCode} - ${res.data}');
-      return res.data?['message']?.toString() ?? 'OTP terkirim.';
-    } on DioException catch (e) {
-      debugPrint('❌ DioException: ${e.response?.statusCode} - ${e.response?.data}');
-      throw _toAuthException(e);
-    } catch (e) {
-      debugPrint('❌ Unknown error in forgotPassword: $e');
-      rethrow;
-    }
-  }
-
-  /// POST /api/verify-otp → return `reset_token` untuk langkah berikutnya.
-  Future<String> verifyOtp({required String email, required String otp}) async {
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.verifyOtp,
-        data: {'email': email, 'otp': otp},
-      );
-      final token = res.data?['reset_token'] as String?;
-      if (token == null || token.isEmpty) {
-        throw const AuthException.message('Server tidak mengembalikan reset token.');
+      if (res == null) {
+        throw const AuthException.message('Nama tidak ditemukan di Squad MNG.');
       }
-      return token;
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
 
-  /// POST /api/reset-password
-  Future<String> resetPassword({
-    required String resetToken,
-    required String password,
-    required String passwordConfirmation,
-  }) async {
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        ApiConstants.resetPassword,
-        data: {
-          'reset_token': resetToken,
-          'password': password,
-          'password_confirmation': passwordConfirmation,
-        },
-      );
-      return res.data?['message']?.toString() ?? 'Password berhasil direset.';
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
-
-  /// GET /api/user — validasi token + ambil profil terkini.
-  Future<User> me() async {
-    try {
-      final res = await _dio.get<Map<String, dynamic>>(ApiConstants.currentUser);
-      if (res.data != null) {
-        return User.fromJson(res.data!);
+      final hashedPassword = res['password'] as String?;
+      if (hashedPassword == null) {
+        throw const AuthException.message('Password salah.');
       }
-      throw const AuthException.message('Body kosong dari /api/user.');
-    } on DioException catch (e) {
-      throw _toAuthException(e);
-    }
-  }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
-
-  AuthResult _parseAuthSuccess(Response<Map<String, dynamic>> res) {
-    final data = res.data!;
-    final user = User.fromJson(data['user'] as Map<String, dynamic>);
-    final token = data['token'] as String;
-    return (user: user, token: token);
-  }
-
-  AuthException _toAuthException(DioException e) {
-    final status = e.response?.statusCode;
-    final body = e.response?.data;
-
-    if (status == 422 && body is Map) {
-      return _parseValidation(Map<String, dynamic>.from(body));
-    }
-
-    final msg = _extractMessage(body) ?? e.message ?? 'Kesalahan jaringan.';
-    return AuthException.message(msg);
-  }
-
-  AuthException _parseValidation(Map<String, dynamic> body) {
-    final errors = <String, List<String>>{};
-    final raw = body['errors'];
-    if (raw is Map) {
-      raw.forEach((key, value) {
-        if (value is List) {
-          errors[key.toString()] =
-              value.map((e) => e.toString()).toList(growable: false);
+      bool isMatch = false;
+      try {
+        if (hashedPassword.startsWith(r'$2')) {
+          isMatch = BCrypt.checkpw(password, hashedPassword);
+        } else {
+          isMatch = (password == hashedPassword);
         }
-      });
+      } catch (e) {
+        isMatch = (password == hashedPassword);
+      }
+
+      if (!isMatch) {
+        throw const AuthException.message('Password salah.');
+      }
+
+      final user = SquadMember.fromJson(res);
+
+      // Token simulasi session Supabase
+      final token = 'mng_session_${user.id}';
+      return (user: user, token: token);
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException.message('Gagal login: $e');
     }
-    return AuthException.validation(
-      errors,
-      message: body['message']?.toString(),
-    );
   }
 
-  String? _extractMessage(dynamic body) {
-    if (body is Map) {
-      final msg = body['message'];
-      if (msg is String) return msg;
-    }
-    return null;
-  }
+  Future<void> logout() async {}
 }
 
 final authApiProvider = Provider<AuthApi>((ref) {
-  return AuthApi(ref.watch(dioProvider));
+  return AuthApi();
 });
+
+

@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/avatar_widget.dart';
-import '../../auth/providers/auth_notifier.dart';
-import '../../auth/providers/profile_notifier.dart';
-import '../../auth/screens/edit_profile_screen.dart';
 
-/// Tab Profil — design-spec.md §8 Tab 3.
-/// Hero atas dengan accent-soft, avatar 88 + ring accent, action list,
-/// tombol logout outlined destructive.
+import '../../auth/providers/auth_notifier.dart';
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -23,90 +20,69 @@ class ProfileScreen extends ConsumerWidget {
       _ => null,
     };
     final theme = Theme.of(context);
-    final brightness = theme.brightness;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(
+        title: Text(
+          'PROFIL MEMBER',
+          style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
+        ),
+      ),
       body: user == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                // Hero section.
+                // Hero / Info Container
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.xl,
-                  ),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: AppColors.accentSoft(brightness),
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(AppRadius.card * 2),
-                    ),
+                    color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+                    border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Column(
                     children: [
                       AvatarWidget(
-                        name: user.name,
-                        emoji: user.avatar,
+                        nama: user.nama,
                         size: AvatarSize.profile,
-                        ringColor: theme.colorScheme.primary,
-                        ringWidth: 3,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
-                        user.name,
-                        style: AppTypography.profileName.copyWith(
-                          color: theme.colorScheme.onSurface,
+                        user.nama.toUpperCase(),
+                        style: GoogleFonts.montserrat(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user.email,
-                        style: AppTypography.messagePreview.copyWith(
-                          color: theme.colorScheme.secondary,
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: isDark ? Colors.white : Colors.black),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // Action list — wrapped in card.
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                  ),
-                  child: Column(
-                    children: [
-                      _ProfileAction(
-                        icon: Icons.edit_outlined,
-                        label: 'Edit Profil',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const EditProfileScreen(),
+                        child: Text(
+                          user.role.toUpperCase(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
                           ),
                         ),
                       ),
-                      Divider(
-                        height: 0.5,
-                        thickness: 0.5,
-                        indent: 56,
-                        color: theme.dividerColor,
-                      ),
-                      _ProfileAction(
-                        icon: Icons.badge_outlined,
-                        label: 'Edit Nama',
-                        onTap: () => _editName(context, ref, user.name),
+                      const SizedBox(height: 8),
+                      Text(
+                        user.userId ?? 'Tidak ada ID terdaftar',
+                        style: GoogleFonts.inter(
+                          color: isDark ? AppColors.mono400 : AppColors.mono700,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -114,108 +90,99 @@ class ProfileScreen extends ConsumerWidget {
 
                 const SizedBox(height: AppSpacing.lg),
 
-                // Logout — outlined destructive.
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _confirmLogout(context, ref),
-                      icon: Icon(
-                        Icons.logout_rounded,
-                        color: AppColors.destructive(brightness),
+                // Card Sesi & Verifikasi
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+                    border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('SESI STATUS', style: AppTypography.badgeText(isDark)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppColors.statusPresent),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              'VERIFIED',
+                              style: TextStyle(
+                                color: AppColors.statusPresent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      label: Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: AppColors.destructive(brightness),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Tersambung langsung dengan portal cloud mngesports.my.id',
+                        style: AppTypography.bodyText(isDark),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        side: BorderSide(
-                          color: AppColors.destructive(brightness),
-                          width: 1,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.input),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: AppSpacing.xl),
+
+                // Logout — Sharp Minimalist
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmLogout(context, ref),
+                    icon: const Icon(Icons.logout_rounded, size: 18, color: Colors.redAccent),
+                    label: Text(
+                      'TERMINATE SESSION (LOGOUT)',
+                      style: GoogleFonts.inter(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                      side: const BorderSide(color: Colors.redAccent),
+                    ),
+                  ),
+                ),
               ],
             ),
     );
   }
 
-  Future<void> _editName(
-    BuildContext context,
-    WidgetRef ref,
-    String currentName,
-  ) async {
-    final ctrl = TextEditingController(text: currentName);
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Nama'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nama'),
-          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-
-    if (newName == null || newName.isEmpty || newName == currentName) return;
-
-    try {
-      await ref.read(profileProvider.notifier).updateProfile(name: newName);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama berhasil diubah')),
-      );
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengubah nama')),
-      );
-    }
-  }
-
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final brightness = Theme.of(context).brightness;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Logout?'),
-        content: const Text('Kamu akan keluar dari akun ini.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        title: Text(
+          'LOGOUT SESSION',
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0),
+        ),
+        content: const Text('Kamu akan keluar dari sesi akun MNG Squad ini.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: const Text('BATAL'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Logout',
-              style: TextStyle(color: AppColors.destructive(brightness)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade900,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
             ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('LOGOUT'),
           ),
         ],
       ),
@@ -227,48 +194,3 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: theme.colorScheme.primary),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                label,
-                style: AppTypography.contactName.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: theme.colorScheme.secondary,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

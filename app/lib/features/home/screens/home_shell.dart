@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_spacing.dart';
-import '../../conversations/providers/total_unread_provider.dart';
+import '../../../shared/providers/announcement_provider.dart';
 
-/// Shell dengan bottom navigation untuk 3 tab utama:
-/// Obrolan • Pengguna • Profil — design-spec.md §7.
-///
-/// Tab Obrolan menampilkan badge unread total (derived).
 class HomeShell extends ConsumerWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -23,86 +19,80 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalUnread = ref.watch(totalUnreadProvider);
-    final theme = Theme.of(context);
+    final asyncAnnouncement = ref.watch(activeAnnouncementProvider);
 
     return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: theme.dividerColor, width: 0.5),
-          ),
-        ),
-        child: NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: _onTap,
-          destinations: [
-            NavigationDestination(
-              icon: _BadgedIcon(
-                icon: Icons.chat_bubble_outline,
-                count: totalUnread,
-              ),
-              selectedIcon: _BadgedIcon(
-                icon: Icons.chat_bubble_rounded,
-                count: totalUnread,
-              ),
-              label: 'Obrolan',
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ─── RUNNING TICKER BROADCAST ANNOUNCEMENT BANNER ─────────────────────
+            asyncAnnouncement.when(
+              data: (msg) {
+                if (msg == null || msg.trim().isEmpty) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  color: Colors.red.shade900,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.campaign, size: 18, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          msg,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.search_rounded),
-              selectedIcon: Icon(Icons.search_rounded),
-              label: 'Pengguna',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
+
+            // Main Tab View
+            Expanded(child: navigationShell),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BadgedIcon extends StatelessWidget {
-  const _BadgedIcon({required this.icon, required this.count});
-  final IconData icon;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Icon(icon),
-        if (count > 0)
-          Positioned(
-            right: -8,
-            top: -4,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: colors.primary,
-                borderRadius: BorderRadius.circular(AppRadius.badge),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                count > 99 ? '99+' : '$count',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
-              ),
-            ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: _onTap,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-      ],
+          NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined),
+            selectedIcon: Icon(Icons.emoji_events_rounded),
+            label: 'Squad',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'Jadwal',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.assignment_turned_in_outlined),
+            selectedIcon: Icon(Icons.assignment_turned_in_rounded),
+            label: 'Presensi',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+      ),
     );
   }
 }

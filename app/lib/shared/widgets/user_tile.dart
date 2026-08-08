@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
-import '../models/user.dart';
-import '../utils/presence_format.dart';
+import '../models/supabase_models.dart';
 import 'avatar_widget.dart';
 
 /// Tile pengguna di Tab 2 — design-spec.md §8.
@@ -14,25 +12,19 @@ class UserTile extends StatelessWidget {
     super.key,
     required this.user,
     required this.onTap,
-    this.isStartingChat = false,
   });
 
-  final User user;
+  final SquadMember user;
   final VoidCallback onTap;
 
-  /// Saat user di-tap dan kita sedang membuat conversation, tampilkan
-  /// spinner di sisi kanan agar feedback proses jelas.
-  final bool isStartingChat;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final brightness = theme.brightness;
-
     return Material(
       color: theme.colorScheme.surfaceContainerHigh,
       child: InkWell(
-        onTap: isStartingChat ? null : onTap,
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
@@ -42,24 +34,7 @@ class UserTile extends StatelessWidget {
             children: [
               Stack(
                 children: [
-                  AvatarWidget(name: user.name, emoji: user.avatar),
-                  if (user.isOnline)
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.onlineDot(brightness),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: theme.colorScheme.surfaceContainerHigh,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
+                  AvatarWidget(nama: user.nama),
                 ],
               ),
               const SizedBox(width: AppSpacing.md),
@@ -68,54 +43,23 @@ class UserTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user.name,
+                      user.nama,
                       style: AppTypography.contactName.copyWith(
                         color: theme.colorScheme.onSurface,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (user.isOnline) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.onlineDot(theme.brightness),
-                              shape: BoxShape.circle,
-                            ),
+                        Text(
+                          user.role,
+                          style: AppTypography.messagePreview.copyWith(
+                            color: theme.colorScheme.secondary,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Online',
-                            style: AppTypography.messagePreview.copyWith(
-                              color: AppColors.onlineDot(theme.brightness),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ] else
-                          Text(
-                            PresenceFormat.describe(
-                              isOnline: false,
-                              lastSeen: user.lastSeen,
-                            ),
-                            style: AppTypography.messagePreview.copyWith(
-                              color: theme.colorScheme.secondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                   ],
                 ),
               ),
-              if (isStartingChat)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
             ],
           ),
         ),

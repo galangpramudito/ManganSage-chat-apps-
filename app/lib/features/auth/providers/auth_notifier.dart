@@ -1,63 +1,50 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/secure_storage.dart';
-import '../../../shared/models/user.dart';
-import '../../conversations/providers/conversations_notifier.dart';
-import '../../messages/providers/active_conversation_provider.dart';
-import '../../messages/providers/messages_notifier.dart';
-import '../../users/providers/users_notifier.dart';
+import '../../../shared/models/supabase_models.dart';
 import '../data/auth_api.dart';
 import '../data/auth_exception.dart';
 
-/// Otoritas tunggal untuk state auth.
-///
-/// `AsyncValue<User?>`:
-/// - `loading`     — sedang validasi token / submit form
-/// - `data(null)`  — unauthenticated
-/// - `data(User)`  — authenticated
-/// - `error`       — gagal submit (login/register), pesan dipakai screen
-class AuthNotifier extends AsyncNotifier<User?> {
+class AuthNotifier extends AsyncNotifier<SquadMember?> {
   @override
-  Future<User?> build() async {
+  Future<SquadMember?> build() async {
     final storage = ref.read(secureStorageProvider);
     final token = await storage.getToken();
 
-    // Jalankan validasi auth dan delay animasi splash secara paralel.
-    // Animasi splash total memakan waktu 2.8 detik (2s draw + 0.8s text fade).
-    final authFuture = () async {
-      if (token == null) return null;
+    if (token == null) {
+      await Future.delayed(const Duration(milliseconds: 1500));
+      return null;
+    }
 
-      // Token ada lokal — validasi ke /api/user.
-      try {
-        return await ref.read(authApiProvider).me();
-      } on AuthException catch (_) {
-        // Token tidak valid lagi → bersihkan. Jangan bocorkan error ke UI.
-        await storage.clear();
-        return null;
+    try {
+      final userJson = await storage.getUserData();
+      if (userJson != null) {
+        final map = jsonDecode(userJson) as Map<String, dynamic>;
+        await Future.delayed(const Duration(milliseconds: 1200));
+        return SquadMember.fromJson(map);
       }
-    }();
-
-    final results = await Future.wait([
-      authFuture,
-      Future.delayed(const Duration(milliseconds: 2800)),
-    ]);
-
-    return results[0] as User?;
+    } catch (_) {
+      await storage.clear();
+    }
+    return null;
   }
 
-  Future<void> setAuthResult(({User user, String token}) result) async {
-    await ref.read(secureStorageProvider).saveToken(result.token);
+  Future<void> setAuthResult(({SquadMember user, String token}) result) async {
+    final storage = ref.read(secureStorageProvider);
+    await storage.saveToken(result.token);
+    await storage.saveUserData(jsonEncode(result.user.toJson()));
     state = AsyncData(result.user);
   }
 
   Future<void> login({
-    required String email,
+    required String nama,
     required String password,
   }) async {
     state = const AsyncLoading();
     try {
       final result = await ref.read(authApiProvider).login(
-            email: email,
+            nama: nama,
             password: password,
           );
       await setAuthResult(result);
@@ -68,38 +55,20 @@ class AuthNotifier extends AsyncNotifier<User?> {
   }
 
   Future<void> logout() async {
-    // Tetap coba revoke ke server — tapi jangan blokir clear lokal kalau gagal.
     try {
       await ref.read(authApiProvider).logout();
-    } catch (_) {
-      // Sengaja diabaikan: kita tetap clear local state.
-    }
+    } catch (_) {}
     await ref.read(secureStorageProvider).clear();
-    _resetUserScopedState();
     state = const AsyncData(null);
   }
 
-  /// Dipanggil oleh AuthInterceptor saat menerima 401 mid-session.
-  /// Tidak menghubungi server — hanya bersihkan local state.
   Future<void> clearSessionLocally() async {
     await ref.read(secureStorageProvider).clear();
-    _resetUserScopedState();
     state = const AsyncData(null);
-  }
-
-  /// Bersihkan SEMUA cached state yang user-scoped.
-  /// Tanpa ini, ganti akun akan menampilkan obrolan/data user sebelumnya
-  /// untuk sekejap (atau bahkan permanen sampai pull-to-refresh).
-  void _resetUserScopedState() {
-    ref.read(activeConversationProvider.notifier).setActive(null);
-    ref.invalidate(conversationsNotifierProvider);
-    ref.invalidate(usersNotifierProvider);
-    // `messagesProvider` adalah family — invalidate menghapus SEMUA
-    // instance (per conversationId).
-    ref.invalidate(messagesProvider);
   }
 }
 
-final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, User?>(
+final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, SquadMember?>(
   AuthNotifier.new,
 );
+
