@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -105,21 +106,25 @@ class AttendanceApi {
         throw Exception(magicCheck.errorMessage);
       }
 
-      // Upload ke Storage Bucket "image"
+      // Upload ke Storage Bucket "image" dengan timeout guard 15 detik
       final uniqueFileName = AttendanceValidator.generateUniqueFileName(
         memberName: memberName,
         isIzin: isIzin,
       );
 
-      await _supabase.storage.from(SupabaseConfig.storageBucket).uploadBinary(
-            uniqueFileName,
-            imageBytes,
-            fileOptions: const FileOptions(
-              contentType: 'image/webp',
-              cacheControl: '3600',
-              upsert: false,
-            ),
-          );
+      try {
+        await _supabase.storage.from(SupabaseConfig.storageBucket).uploadBinary(
+              uniqueFileName,
+              imageBytes,
+              fileOptions: const FileOptions(
+                contentType: 'image/webp',
+                cacheControl: '3600',
+                upsert: false,
+              ),
+            ).timeout(const Duration(seconds: 15));
+      } catch (e) {
+        throw Exception('Gagal mengunggah foto bukti (koneksi timeout). Coba lagi.');
+      }
 
       uploadedImageUrl = _supabase.storage
           .from(SupabaseConfig.storageBucket)
@@ -134,7 +139,8 @@ class AttendanceApi {
         .select('id')
         .eq('member_id', memberId)
         .eq('schedule_id', scheduleId)
-        .maybeSingle();
+        .maybeSingle()
+        .timeout(const Duration(seconds: 10));
 
     if (existing != null) {
       throw Exception('Kamu sudah mengisi absensi untuk jadwal ini!');
@@ -149,7 +155,11 @@ class AttendanceApi {
       'image_url': uploadedImageUrl ?? (isIzin ? 'N/A' : ''),
     };
 
-    await _supabase.from('absensi').insert(insertPayload);
+    try {
+      await _supabase.from('absensi').insert(insertPayload).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      throw Exception('Gagal menyimpan presensi ke database: $e');
+    }
   }
 
   /// Ambil riwayat absensi pribadi + JOIN schedule untuk ambil judul
@@ -163,7 +173,8 @@ class AttendanceApi {
 
       return res.map((m) => AttendanceRecord.fromMap(m as Map<String, dynamic>)).toList();
     } catch (e) {
-      return [];
+      debugPrint('ERROR GETTING HISTORY: $e');
+      rethrow;
     }
   }
 }

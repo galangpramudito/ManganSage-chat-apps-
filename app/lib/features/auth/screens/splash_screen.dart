@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Animated splash screen — logo Mangan dengan animasi draw stroke-by-stroke
 /// + floating ambient + teks "MANGAN" fade-in (Montserrat Bold).
@@ -34,6 +35,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   // Ambient float.
   late final Animation<double> _floatOffset;
+  
+  // Timeout fallback
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -95,10 +99,19 @@ class _SplashScreenState extends State<SplashScreen>
         _textController.forward();
       }
     });
+
+    // Fallback timeout: if auth takes > 5 seconds, navigate to login
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted && !_navigated) {
+        _navigated = true;
+        context.go('/login');
+      }
+    });
   }
 
   @override
   void dispose() {
+    _navigated = true;
     _drawController.dispose();
     _floatController.dispose();
     _textController.dispose();

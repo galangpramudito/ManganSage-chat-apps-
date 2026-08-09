@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/models/supabase_models.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../auth/providers/auth_notifier.dart';
 
 import '../providers/squad_notifier.dart';
 
@@ -63,6 +64,7 @@ class SquadScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(squadMembersProvider);
           ref.invalidate(leaderboardProvider);
+          await Future.delayed(const Duration(milliseconds: 800));
         },
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -82,7 +84,7 @@ class SquadScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'MANGAN GROUP // VALORANT SQUAD',
+                        'MANGAN GROUP · VALORANT',
                         style: AppTypography.badgeText(isDark),
                       ),
                       Container(
@@ -152,7 +154,10 @@ class SquadScreen extends ConsumerWidget {
                 const Icon(Icons.people_outline, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'DAFTAR ANGGOTA SQUAD',
+                  asyncMembers.maybeWhen(
+                    data: (m) => 'DAFTAR ANGGOTA SQUAD (${m.length})',
+                    orElse: () => 'DAFTAR ANGGOTA SQUAD',
+                  ),
                   style: GoogleFonts.montserrat(
                     fontWeight: FontWeight.w900,
                     fontSize: 14,
@@ -170,12 +175,22 @@ class SquadScreen extends ConsumerWidget {
                     title: 'Belum ada anggota terdaftar',
                   );
                 }
+                final currentUserId = ref.watch(authNotifierProvider).value?.id;
+
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: members.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 8),
-                  itemBuilder: (ctx, i) => _MemberCard(user: members[i], isDark: isDark),
+                  itemBuilder: (ctx, i) {
+                    final member = members[i];
+                    final isCurrentUser = member.id == currentUserId;
+                    return _MemberCard(
+                      user: member,
+                      isDark: isDark,
+                      isCurrentUser: isCurrentUser,
+                    );
+                  },
                 );
               },
               loading: () => const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2))),
@@ -309,9 +324,15 @@ class _MvpPodiumList extends StatelessWidget {
 }
 
 class _MemberCard extends StatelessWidget {
-  const _MemberCard({required this.user, required this.isDark});
+  const _MemberCard({
+    required this.user,
+    required this.isDark,
+    this.isCurrentUser = false,
+  });
+
   final SquadMember user;
   final bool isDark;
+  final bool isCurrentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -320,9 +341,16 @@ class _MemberCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+        color: isCurrentUser
+            ? (isDark ? AppColors.mono900 : Colors.white)
+            : (isDark ? AppColors.mono900 : AppColors.backgroundLight),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
+        border: Border.all(
+          color: isCurrentUser
+              ? AppColors.statusPresent
+              : (isDark ? AppColors.mono800 : AppColors.mono200),
+          width: isCurrentUser ? 1.5 : 1.0,
+        ),
       ),
       child: Row(
         children: [
@@ -342,8 +370,28 @@ class _MemberCard extends StatelessWidget {
                         letterSpacing: 1.0,
                       ),
                     ),
+                    if (isCurrentUser) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.statusPresent.withValues(alpha: 0.15),
+                          border: Border.all(color: AppColors.statusPresent),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: const Text(
+                          'KAMU',
+                          style: TextStyle(
+                            color: AppColors.statusPresent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ],
                     if (isAdmin) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(

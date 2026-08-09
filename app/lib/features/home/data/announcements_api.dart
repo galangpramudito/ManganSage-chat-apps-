@@ -28,5 +28,5 @@ class AnnouncementsApi {
 }
 
 final announcementsApiProvider = Provider<AnnouncementsApi>((ref) {
-  return AnnouncementsApi(ref.watch(adminSupabaseProvider));
+  return AnnouncementsApi(ref.watch(supabaseProvider));
 });

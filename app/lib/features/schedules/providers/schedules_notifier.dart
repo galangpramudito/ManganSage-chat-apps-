@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/notifications/alarm_service.dart';
@@ -8,10 +9,10 @@ import '../data/schedules_api.dart';
 /// StreamProvider with Supabase Realtime so whenever Admin opens a new schedule,
 /// ALL devices instantly refresh schedules, show pop-up notification & set alarms!
 final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
-  final supabase = ref.watch(adminSupabaseProvider);
+  final supabase = ref.watch(supabaseProvider);
   final alarmService = ref.watch(alarmServiceProvider);
 
-  print('⚡ [schedulesListProvider] INITIALIZING STREAM WITH ADMIN CLIENT...');
+  debugPrint('⚡ [schedulesListProvider] INITIALIZING STREAM...');
 
   // Track old schedules to detect new ones for notifications
   List<ScheduleModel> previousSchedules = [];
@@ -21,7 +22,7 @@ final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
       .stream(primaryKey: ['id'])
       .order('start_time', ascending: false)
       .map((data) {
-    print('⚡ [schedulesListProvider] STREAM EMITTED DATA: ${data.length} rows');
+    debugPrint('⚡ [schedulesListProvider] STREAM EMITTED DATA: ${data.length} rows');
     
     final newSchedules = data.map((map) {
       final startRaw = DateTime.tryParse(map['start_time']?.toString() ?? '');
@@ -41,7 +42,7 @@ final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
     final currentIds = previousSchedules.map((s) => s.id).toSet();
     for (final s in newSchedules) {
       if (!currentIds.contains(s.id) && previousSchedules.isNotEmpty) {
-        print('⚡ [schedulesListProvider] NEW SCHEDULE DETECTED! TRIGGERING ALARM.');
+        debugPrint('⚡ [schedulesListProvider] NEW SCHEDULE DETECTED! TRIGGERING ALARM.');
         alarmService.showInstantNotification(
           title: '📢 JADWAL MATCH BARU DIBUKA!',
           body: 'Admin baru saja membuka: ${s.title}',
@@ -54,7 +55,7 @@ final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
     
     return newSchedules;
   }).handleError((error) {
-    print('🔴 [schedulesListProvider] STREAM ERROR: $error');
+    debugPrint('🔴 [schedulesListProvider] STREAM ERROR: $error');
     throw error;
   });
 });

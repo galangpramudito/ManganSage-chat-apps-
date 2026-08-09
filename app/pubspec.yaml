@@ -74,9 +74,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo_mangansage.png"
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/logo_mangansage.png"
+  image_path: "assets/icon_app.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon_app.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -91,6 +91,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/icon_app.png
+    - assets/manganlogo.png
     - assets/logo_mangansage.png
 
   # An image asset can refer to one or more resolution-specific "variants", see

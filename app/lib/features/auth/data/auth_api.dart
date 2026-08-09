@@ -17,21 +17,14 @@ class AuthApi {
     required String password,
   }) async {
     try {
-      // Bypass RLS menggunakan service_role key khusus untuk query login saja
-      // karena 'anon' tidak memiliki akses baca ke tabel squad_members berdasarkan RLS database.
-      final adminClient = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.serviceRoleKey,
-      );
+      final client = Supabase.instance.client;
 
       final cleanNama = nama.trim();
-      final res = await adminClient
+      final res = await client
           .from('squad_members')
           .select()
           .ilike('nama', cleanNama)
           .maybeSingle();
-          
-      adminClient.dispose();
 
       if (res == null) {
         throw const AuthException.message('Nama tidak ditemukan di Squad MNG.');

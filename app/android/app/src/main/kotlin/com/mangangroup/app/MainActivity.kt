@@ -1,4 +1,4 @@
-package com.mangansage.mangansage
+package com.mangangroup.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -43,26 +43,17 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _localNotif =
       FlutterLocalNotificationsPlugin();
 
-  /// Apakah Firebase boleh di-init. Default `false` untuk menghindari noise
-  /// stacktrace di Android logcat saat `google-services.json` belum di-set up.
-  /// Aktifkan lewat `--dart-define=FIREBASE_ENABLED=true` setelah Firebase config
-  /// terpasang. Lihat README "Setup Firebase" untuk langkahnya.
+  /// Apakah Firebase boleh di-init.
   static const bool _firebaseEnabled = bool.fromEnvironment(
     'FIREBASE_ENABLED',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   /// Inisialisasi Firebase + FCM. Idempotent; aman dipanggil berulang kali.
   Future<void> init() async {
     if (_initialized) return;
 
-    if (!_firebaseEnabled) {
-      debugPrint(
-        '[FCM] dimatikan — pakai --dart-define=FIREBASE_ENABLED=true setelah '
-        'google-services.json terpasang.',
-      );
-      return;
-    }
+    if (!_firebaseEnabled) return;
 
     try {
       await Firebase.initializeApp();
@@ -86,6 +77,16 @@ class FcmService {
       sound: true,
     );
     debugPrint('[FCM] permission: ${settings.authorizationStatus}');
+
+    // Subscribe to squad broadcast topics for easy broadcast from Firebase/Supabase
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic('all_members');
+      await FirebaseMessaging.instance.subscribeToTopic('schedules');
+      await FirebaseMessaging.instance.subscribeToTopic('announcements');
+      debugPrint('[FCM] Subscribed to all_members, schedules, announcements topics');
+    } catch (e) {
+      debugPrint('[FCM] subscribeToTopic error: $e');
+    }
 
     // Listener: pesan datang saat app foreground.
     FirebaseMessaging.onMessage.listen(_onForeground);
@@ -169,7 +170,7 @@ class FcmService {
 
     _localNotif.show(
       id: message.hashCode,
-      title: n.title ?? 'MNG Squad',
+      title: n.title ?? 'Mangan Group',
       body: n.body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(

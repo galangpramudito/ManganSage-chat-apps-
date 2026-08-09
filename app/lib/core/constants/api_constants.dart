@@ -1,4 +1,4 @@
-/// Konstanta endpoint & konfigurasi backend MNG Squad.
+/// Konstanta endpoint & konfigurasi backend Mangan Group (MNG Group).
 class ApiConstants {
   ApiConstants._();
 

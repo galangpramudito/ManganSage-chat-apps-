@@ -75,13 +75,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(path: '/schedules', builder: (_, _) => const SchedulesScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/attendance', builder: (_, _) => const AttendanceScreen()),
-          ]),
-          StatefulShellBranch(routes: [
             GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
           ]),
         ],
       ),
+      GoRoute(path: '/attendance', builder: (_, _) => const AttendanceScreen()),
     ],
   );
 });

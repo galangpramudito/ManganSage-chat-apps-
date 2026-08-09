@@ -2,10 +2,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -16,52 +19,14 @@ import '../../schedules/providers/schedules_notifier.dart';
 import '../data/attendance_api.dart';
 import '../providers/attendance_notifier.dart';
 
+import '../../../shared/widgets/attendance_badge.dart';
+
 class AttendanceScreen extends ConsumerStatefulWidget {
   const AttendanceScreen({super.key});
 
-  static Widget buildAttendanceBadge(String status) {
-    Color badgeColor;
-    String label = status;
-
-    switch (status.toUpperCase()) {
-      case 'PRESENT':
-        badgeColor = AppColors.statusPresent;
-        label = 'HADIR';
-        break;
-      case 'LATE':
-        badgeColor = AppColors.statusLate;
-        label = 'TERLAMBAT';
-        break;
-      case 'IZIN':
-        badgeColor = AppColors.statusIzin;
-        label = 'IZIN';
-        break;
-      case 'IZIN_LATE':
-        badgeColor = AppColors.statusIzinLate;
-        label = 'IZIN TERLAMBAT';
-        break;
-      default:
-        badgeColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.12),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: badgeColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
+  /// Backward-compatible delegate to shared [AttendanceBadge] widget.
+  static Widget buildAttendanceBadge(String status) =>
+      AttendanceBadge(status: status);
 
   @override
   ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -179,6 +144,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           _pickedImage = null;
           _pickedImageBytes = null;
         });
+
+        // Auto-pop back to Home after short delay
+        await Future.delayed(const Duration(milliseconds: 1200));
+        if (mounted) context.pop();
       }
     } catch (e) {
       if (mounted) {
@@ -194,6 +163,51 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
+  /// Show confirmation dialog before submitting (irreversible action)
+  Future<void> _confirmAndSubmit(List<ScheduleModel> schedules) async {
+    HapticFeedback.mediumImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusLabel = _selectedStatus == 'PRESENT' ? 'HADIR' : 'IZIN';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        backgroundColor: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+        title: Text(
+          'KONFIRMASI PRESENSI',
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1.0),
+        ),
+        content: Text(
+          'Kamu akan mengirim presensi sebagai "$statusLabel".\n\nData ini tidak dapat diubah setelah dikirim. Lanjutkan?',
+          style: GoogleFonts.inter(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('BATAL', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+            ),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.pop(ctx, true);
+            },
+            child: Text('KIRIM', style: GoogleFonts.inter(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _submit(schedules);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -201,145 +215,189 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final asyncSchedules = ref.watch(schedulesListProvider);
     final asyncHistory = ref.watch(myAttendanceHistoryProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'PRESENSI SQUAD MNG',
-          style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: () => ref.invalidate(myAttendanceHistoryProvider),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'PRESENSI SQUAD MNG',
+            style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(myAttendanceHistoryProvider),
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            // ─── Form Card ──────────────────────────────────────────────────
-            Builder(
-              builder: (context) {
-                final schedules = asyncSchedules.value ?? [];
-                final history = asyncHistory.value ?? [];
-                final now = DateTime.now().toUtc();
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              onPressed: () => ref.invalidate(myAttendanceHistoryProvider),
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(myAttendanceHistoryProvider),
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              // ─── Form Card ──────────────────────────────────────────────────
+              Builder(
+                builder: (context) {
+                  final schedules = asyncSchedules.value ?? [];
+                  final history = asyncHistory.value ?? [];
 
-                // Set ID schedule yang sudah pernah diisi oleh user
-                final submittedScheduleIds = history.map((h) => h.scheduleId).toSet();
+                  // Set ID schedule yang sudah pernah diisi oleh user
+                  final submittedScheduleIds = history.map((h) => h.scheduleId).toSet();
 
-                final nowLocal = DateTime.now();
-                // Filter hanya jadwal hari ini DAN belum diisi oleh user
-                final pendingSchedules = schedules.where((s) {
-                  final startLocal = s.startTime.toLocal();
-                  final isToday = startLocal.year == nowLocal.year && 
-                                  startLocal.month == nowLocal.month && 
-                                  startLocal.day == nowLocal.day;
-                  final isNotSubmitted = !submittedScheduleIds.contains(s.id);
-                  return isToday && isNotSubmitted;
-                }).toList();
+                  final nowLocal = DateTime.now();
+                  // Filter hanya jadwal hari ini DAN belum diisi oleh user
+                  final pendingSchedules = schedules.where((s) {
+                    final startLocal = s.startTime.toLocal();
+                    final isToday = startLocal.year == nowLocal.year && 
+                                    startLocal.month == nowLocal.month && 
+                                    startLocal.day == nowLocal.day;
+                    final isNotSubmitted = !submittedScheduleIds.contains(s.id);
+                    return isToday && isNotSubmitted;
+                  }).toList();
 
-                // Jika SEMUA jadwal aktif sudah diisi atau tidak ada jadwal
-                if (pendingSchedules.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: history.isNotEmpty
-                            ? AppColors.statusPresent
-                            : (isDark ? AppColors.mono800 : AppColors.mono200),
-                        width: history.isNotEmpty ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          history.isNotEmpty ? Icons.verified_outlined : Icons.calendar_today_outlined,
-                          size: 36,
+                  // Jika SEMUA jadwal aktif sudah diisi atau tidak ada jadwal
+                  if (pendingSchedules.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
                           color: history.isNotEmpty
                               ? AppColors.statusPresent
-                              : (isDark ? AppColors.mono400 : AppColors.mono700),
+                              : (isDark ? AppColors.mono800 : AppColors.mono200),
+                          width: history.isNotEmpty ? 1.5 : 1.0,
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          history.isNotEmpty ? 'SEMUA PRESENSI COMPLETED' : 'TIDAK ADA JADWAL MATCH DIBUKA',
-                          style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            letterSpacing: 1.0,
-                            color: history.isNotEmpty ? AppColors.statusPresent : null,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          history.isNotEmpty
-                              ? 'Kamu telah menyelesaikan semua presensi jadwal match aktif.'
-                              : 'Admin belum membuka jadwal pertandingan baru saat ini.',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: isDark ? AppColors.mono400 : AppColors.mono700,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Masih ada jadwal aktif yang BELUM diisi user -> Tampilkan Form Presensi
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ),
+                      child: Column(
                         children: [
+                          Icon(
+                            history.isNotEmpty ? Icons.verified_outlined : Icons.calendar_today_outlined,
+                            size: 40,
+                            color: history.isNotEmpty
+                                ? AppColors.statusPresent
+                                : (isDark ? AppColors.mono400 : AppColors.mono700),
+                          ),
+                          const SizedBox(height: 12),
                           Text(
-                            _selectedStatus == 'PRESENT' ? 'FORM PRESENSI HADIR' : 'FORM PENGAJUAN IZIN',
+                            history.isNotEmpty ? 'SEMUA PRESENSI COMPLETED' : 'TIDAK ADA JADWAL MATCH DIBUKA',
                             style: GoogleFonts.montserrat(
                               fontWeight: FontWeight.w900,
                               fontSize: 14,
                               letterSpacing: 1.0,
+                              color: history.isNotEmpty ? AppColors.statusPresent : null,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            history.isNotEmpty
+                                ? 'Kamu telah menyelesaikan semua presensi jadwal match aktif hari ini.'
+                                : 'Admin belum membuka jadwal pertandingan baru saat ini.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: isDark ? AppColors.mono400 : AppColors.mono700,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 20),
+                          // Action buttons to guide user out of empty state
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark ? Colors.white : Colors.black,
+                                foregroundColor: isDark ? Colors.black : Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                              ),
+                              onPressed: () {
+                                context.pop();
+                                context.go('/schedules');
+                              },
+                              icon: const Icon(Icons.history_rounded, size: 18),
+                              label: Text(
+                                'LIHAT RIWAYAT PRESENSI',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.0),
+                              ),
                             ),
                           ),
-                          Text(_selectedStatus == 'PRESENT' ? 'HADIR // PROOF' : 'IZIN // REASON', style: AppTypography.badgeText(isDark)),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                                side: BorderSide(color: isDark ? AppColors.mono700 : AppColors.mono400),
+                              ),
+                              onPressed: () => context.pop(),
+                              icon: const Icon(Icons.home_outlined, size: 18),
+                              label: Text(
+                                'KEMBALI KE BERANDA',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.0),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                    );
+                  }
 
-                      // Pilih Jadwal (Hanya memuat jadwal yang BELUM diisi)
-                      DropdownButtonFormField<String>(
-                        initialValue: pendingSchedules.any((s) => s.id == _selectedScheduleId)
-                            ? _selectedScheduleId
-                            : pendingSchedules.first.id,
-                        decoration: const InputDecoration(
-                          labelText: 'PILIH JADWAL MATCH',
-                          prefixIcon: Icon(Icons.sports_esports_outlined, size: 18),
-                        ),
-                        items: pendingSchedules.map((s) {
-                          return DropdownMenuItem(
-                            value: s.id,
-                            child: Text(
-                              s.title.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                  // Masih ada jadwal aktif yang BELUM diisi user -> Tampilkan Form Presensi
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _selectedStatus == 'PRESENT' ? 'FORM PRESENSI HADIR' : 'FORM PENGAJUAN IZIN',
+                              style: GoogleFonts.montserrat(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                                letterSpacing: 1.0,
+                              ),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (val) => setState(() => _selectedScheduleId = val),
-                      ),
-                      const SizedBox(height: 12),
+                            Text(_selectedStatus == 'PRESENT' ? 'HADIR // PROOF' : 'IZIN // REASON', style: AppTypography.badgeText(isDark)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Pilih Jadwal (Hanya memuat jadwal yang BELUM diisi)
+                        DropdownButtonFormField<String>(
+                          value: pendingSchedules.any((s) => s.id == _selectedScheduleId)
+                              ? _selectedScheduleId
+                              : pendingSchedules.first.id,
+                          decoration: const InputDecoration(
+                            labelText: 'PILIH JADWAL MATCH',
+                            prefixIcon: Icon(Icons.sports_esports_outlined, size: 18),
+                          ),
+                          items: pendingSchedules.map((s) {
+                            final startStr = DateFormat('HH:mm', 'id_ID').format(s.startTime.toLocal());
+                            final endStr = DateFormat('HH:mm', 'id_ID').format(s.endTime.toLocal());
+                            return DropdownMenuItem(
+                              value: s.id,
+                              child: Text(
+                                '${s.title.toUpperCase()} ($startStr — $endStr WIB)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) => setState(() => _selectedScheduleId = val),
+                        ),
+                        const SizedBox(height: 12),
 
                       // Status Hadir vs Izin
                       Row(
@@ -357,7 +415,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                 side: BorderSide(color: isDark ? AppColors.mono700 : AppColors.mono400),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              onPressed: () => setState(() => _selectedStatus = 'PRESENT'),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                setState(() => _selectedStatus = 'PRESENT');
+                              },
                               child: Text(
                                 'HADIR (READY)',
                                 style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.0),
@@ -378,7 +439,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                 side: BorderSide(color: isDark ? AppColors.mono700 : AppColors.mono400),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              onPressed: () => setState(() => _selectedStatus = 'IZIN'),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                setState(() => _selectedStatus = 'IZIN');
+                              },
                               child: Text(
                                 'IZIN / ABSEN',
                                 style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.0),
@@ -537,7 +601,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           ),
                           onPressed: _submitting
                               ? null
-                              : () => _submit(pendingSchedules),
+                              : () => _confirmAndSubmit(pendingSchedules),
                           child: _submitting
                               ? const SizedBox(
                                   width: 18,
@@ -556,108 +620,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // ─── Riwayat Absensi ────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'RIWAYAT PRESENSI SAYA',
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1.0),
-                ),
-                Text('LOGS', style: AppTypography.badgeText(isDark)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            asyncHistory.when(
-              data: (history) {
-                if (history.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
-                    ),
-                    child: const Center(child: Text('Belum ada riwayat presensi.')),
                   );
-                }
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: history.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
-                  itemBuilder: (ctx, i) {
-                    final item = history[i];
-                    final dateStr = DateFormat('dd MMM yyyy • HH:mm', 'id_ID').format(item.createdAt.toLocal());
-                    final title = item.scheduleTitle ?? 'MATCH VALORANT';
-
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Thumbnail foto bukti (Hanya jika ada URL valid dan bukan 'N/A')
-                          if (item.imageUrl != null && item.imageUrl!.isNotEmpty && item.imageUrl != 'N/A')
-                            Container(
-                              width: 44,
-                              height: 44,
-                              margin: const EdgeInsets.only(right: 10),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(2),
-                                border: Border.all(color: isDark ? AppColors.mono700 : AppColors.mono300),
-                                image: DecorationImage(
-                                  image: NetworkImage(item.imageUrl!),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title.toUpperCase(),
-                                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (item.alasan != null && item.alasan!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Alasan: ${item.alasan}',
-                                    style: GoogleFonts.inter(fontSize: 11, color: isDark ? AppColors.mono400 : AppColors.mono700),
-                                  ),
-                                ],
-                                const SizedBox(height: 4),
-                                Text(
-                                  dateStr,
-                                  style: GoogleFonts.inter(color: isDark ? AppColors.mono400 : AppColors.mono700, fontSize: 10),
-                                ),
-                              ],
-                            ),
-                          ),
-                          AttendanceScreen.buildAttendanceBadge(item.status),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2))),
-              error: (err, _) => Text('Gagal memuat riwayat: $err'),
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
