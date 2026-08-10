@@ -45,7 +45,7 @@ class SquadScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              'SQUAD & MVP',
+              'ROSTER & LEADERBOARD',
               style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
             ),
           ],
@@ -84,7 +84,7 @@ class SquadScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'MANGAN GROUP · VALORANT',
+                        'MNG GROUP // VALORANT',
                         style: AppTypography.badgeText(isDark),
                       ),
                       Container(
@@ -112,7 +112,7 @@ class SquadScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Sinkronisasi langsung dengan web mngesports.my.id',
+                    'Sinkronisasi data real-time dengan portal mngesports.my.id',
                     style: AppTypography.bodyText(isDark),
                   ),
                 ],
@@ -155,8 +155,8 @@ class SquadScreen extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text(
                   asyncMembers.maybeWhen(
-                    data: (m) => 'DAFTAR ANGGOTA SQUAD (${m.length})',
-                    orElse: () => 'DAFTAR ANGGOTA SQUAD',
+                    data: (m) => 'DAFTAR ANGGOTA TIM (${m.length})',
+                    orElse: () => 'DAFTAR ANGGOTA TIM',
                   ),
                   style: GoogleFonts.montserrat(
                     fontWeight: FontWeight.w900,

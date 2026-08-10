@@ -135,7 +135,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Presensi berhasil dikirim ke portal MNG!'),
+            content: Text('Presensi berhasil dikonfirmasi ke sistem MNG Group.'),
             backgroundColor: AppColors.statusPresent,
           ),
         );
@@ -179,7 +179,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           style: GoogleFonts.montserrat(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1.0),
         ),
         content: Text(
-          'Kamu akan mengirim presensi sebagai "$statusLabel".\n\nData ini tidak dapat diubah setelah dikirim. Lanjutkan?',
+          'Anda akan mengonfirmasi presensi dengan status "$statusLabel".\n\nData yang telah terkirim akan langsung tercatat secara permanen di sistem. Lanjutkan proses?',
           style: GoogleFonts.inter(fontSize: 13, height: 1.5),
         ),
         actions: [
@@ -221,7 +221,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'PRESENSI SQUAD MNG',
+            'KONFIRMASI PRESENSI',
             style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
           ),
           actions: [

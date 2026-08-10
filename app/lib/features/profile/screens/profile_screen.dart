@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/notifications/alarm_service.dart';
 import '../../../core/notifications/notification_preferences.dart';
@@ -13,6 +14,7 @@ import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../attendance/providers/attendance_notifier.dart';
 import '../../auth/providers/auth_notifier.dart';
+import '../../schedules/providers/schedules_notifier.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -27,18 +29,32 @@ class ProfileScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'PROFIL ANGGOTA',
+            style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
+          ),
+          centerTitle: true,
+        ),
+        body: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    final activeEmail = user.email ?? Supabase.instance.client.auth.currentUser?.email;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'PROFIL MEMBER',
+          'PROFIL ANGGOTA',
           style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
         ),
+        centerTitle: true,
       ),
-      body: user == null
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
                 // Hero / Info Container
                 Container(
                   width: double.infinity,
@@ -64,7 +80,25 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 4),
+                      if (activeEmail != null && activeEmail.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.email_outlined, size: 14, color: isDark ? AppColors.mono400 : AppColors.mono600),
+                            const SizedBox(width: 6),
+                            Text(
+                              activeEmail,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.mono300 : AppColors.mono700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
@@ -184,6 +218,41 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (activeEmail != null && activeEmail.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.verified_user_outlined, size: 16, color: AppColors.statusPresent),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'EMAIL TERTAUT',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.0,
+                                      color: isDark ? AppColors.mono400 : AppColors.mono600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    activeEmail,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Text(
                         'Tersambung langsung dengan portal cloud mngesports.my.id',
@@ -225,7 +294,7 @@ class ProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        'MANGAN GROUP · VALORANT',
+                        'MNG GROUP // VALORANT',
                         style: GoogleFonts.montserrat(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -283,7 +352,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    'PENGATURAN NOTIFIKASI SQUAD',
+                    'PENGATURAN NOTIFIKASI & ALARM',
                     style: GoogleFonts.montserrat(
                       fontWeight: FontWeight.w900,
                       fontSize: 14,
@@ -364,13 +433,13 @@ class ProfileScreen extends ConsumerWidget {
                         HapticFeedback.mediumImpact();
                         final alarm = ref.read(alarmServiceProvider);
                         await alarm.showInstantNotification(
-                          title: '🔔 TES NOTIFIKASI MANGAN GROUP',
-                          body: 'Sistem notifikasi lokal di perangkat Anda berfungsi dengan sempurna!',
+                          title: 'Uji Coba Notifikasi',
+                          body: 'Sistem notifikasi pada perangkat Anda berfungsi dengan normal.',
                         );
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Notifikasi tes berhasil ditembakkan ke HP Anda!'),
+                              content: Text('Notifikasi uji coba berhasil dikirim.'),
                               backgroundColor: AppColors.statusPresent,
                             ),
                           );
@@ -404,7 +473,7 @@ class ProfileScreen extends ConsumerWidget {
           'LOGOUT SESSION',
           style: GoogleFonts.montserrat(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0),
         ),
-        content: const Text('Kamu akan keluar dari sesi akun Mangan Group ini.'),
+        content: const Text('Apakah Anda yakin ingin keluar dari sesi akun ini?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -441,6 +510,7 @@ class _AttendanceStatsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncHistory = ref.watch(myAttendanceHistoryProvider);
+    final asyncSchedules = ref.watch(schedulesListProvider);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -452,19 +522,33 @@ class _AttendanceStatsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('STATISTIK PRESENSI', style: AppTypography.badgeText(isDark)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('STATISTIK PRESENSI & JADWAL', style: AppTypography.badgeText(isDark)),
+              const Icon(Icons.analytics_outlined, size: 16),
+            ],
+          ),
           const SizedBox(height: 14),
           asyncHistory.when(
             data: (history) {
-              if (history.isEmpty) {
-                return Text(
-                  'Belum ada data presensi.',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: isDark ? AppColors.mono400 : AppColors.mono600,
-                  ),
-                );
-              }
+              final schedules = asyncSchedules.value ?? [];
+              final now = DateTime.now();
+
+              // Jadwal masa lalu (yang sudah dibuka / sedang / telah selesai)
+              final pastSchedules = schedules.where((s) {
+                return s.startTime.toLocal().isBefore(now) || 
+                       s.endTime.toLocal().isBefore(now);
+              }).toList();
+
+              final totalSessions = schedules.length;
+              final totalPast = pastSchedules.length;
+
+              // Set ID jadwal yang sudah disubmit presensinya oleh user
+              final attendedScheduleIds = history
+                  .map((r) => r.scheduleId)
+                  .where((id) => id.isNotEmpty)
+                  .toSet();
 
               int present = 0, late = 0, izin = 0;
               for (final r in history) {
@@ -482,17 +566,32 @@ class _AttendanceStatsCard extends ConsumerWidget {
                 }
               }
 
-              final attendanceRate = history.isNotEmpty
-                  ? ((present + late) / history.length * 100).toStringAsFixed(0)
-                  : '0';
+              // Hitung Alpha (Jadwal masa lalu yang tidak dihadiri dan tidak izin)
+              int alpha = 0;
+              if (totalPast > 0) {
+                alpha = pastSchedules.where((s) => !attendedScheduleIds.contains(s.id)).length;
+              }
+
+              // Kehadiran Rate (%) dihitung terhadap total jadwal yang sudah berjalan
+              final totalHadir = present + late;
+              final double progressValue = totalPast > 0 
+                  ? (totalHadir / totalPast).clamp(0.0, 1.0)
+                  : (history.isNotEmpty ? (totalHadir / history.length).clamp(0.0, 1.0) : 1.0);
+              
+              final attendanceRate = (progressValue * 100).toStringAsFixed(0);
+
+              // Tentukan warna bar kehadiran berdasarkan rate
+              final Color rateColor = progressValue >= 0.75
+                  ? AppColors.statusPresent
+                  : (progressValue >= 0.5 ? AppColors.statusLate : Colors.redAccent);
 
               return Column(
                 children: [
                   Row(
                     children: [
                       _StatTile(
-                        label: 'TOTAL',
-                        value: '${history.length}',
+                        label: 'SESI',
+                        value: '$totalSessions',
                         color: isDark ? Colors.white : Colors.black,
                         isDark: isDark,
                       ),
@@ -514,9 +613,15 @@ class _AttendanceStatsCard extends ConsumerWidget {
                         color: AppColors.statusIzin,
                         isDark: isDark,
                       ),
+                      _StatTile(
+                        label: 'ALPHA',
+                        value: '$alpha',
+                        color: Colors.redAccent,
+                        isDark: isDark,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   // Attendance rate bar
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,7 +643,7 @@ class _AttendanceStatsCard extends ConsumerWidget {
                             style: GoogleFonts.montserrat(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              color: AppColors.statusPresent,
+                              color: rateColor,
                             ),
                           ),
                         ],
@@ -547,10 +652,18 @@ class _AttendanceStatsCard extends ConsumerWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(2),
                         child: LinearProgressIndicator(
-                          value: (present + late) / history.length,
+                          value: progressValue,
                           minHeight: 6,
                           backgroundColor: isDark ? AppColors.mono800 : AppColors.mono200,
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.statusPresent),
+                          valueColor: AlwaysStoppedAnimation<Color>(rateColor),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '$totalHadir dari $totalPast match dihadiri • $alpha match alpha',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: isDark ? AppColors.mono500 : AppColors.mono600,
                         ),
                       ),
                     ],

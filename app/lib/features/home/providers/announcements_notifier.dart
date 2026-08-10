@@ -12,10 +12,9 @@ final activeAnnouncementProvider = StreamProvider<Announcement?>((ref) {
 
   return api.getActiveAnnouncementStream().map((announcement) {
     if (announcement != null && announcement.isActive) {
-      // Trigger notification if a new broadcast announcement is pushed while app is active
       if (lastAnnouncementId != null && lastAnnouncementId != announcement.id) {
         alarmService.showInstantNotification(
-          title: '📢 PENGUMUMAN MANGAN GROUP',
+          title: 'Pengumuman Resmi MNG Group',
           body: announcement.message,
         );
       }

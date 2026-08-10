@@ -40,7 +40,7 @@ class HomeShell extends ConsumerWidget {
             NavigationDestination(
               icon: Icon(Icons.emoji_events_outlined),
               selectedIcon: Icon(Icons.emoji_events_rounded),
-              label: 'Squad',
+              label: 'Team',
             ),
             NavigationDestination(
               icon: Icon(Icons.history_outlined),

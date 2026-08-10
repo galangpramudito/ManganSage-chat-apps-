@@ -10,6 +10,7 @@ abstract class SquadMember with _$SquadMember {
     required String id,
     required String nama,
     required String role,
+    String? email,
     @JsonKey(name: 'user_id') String? userId,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,

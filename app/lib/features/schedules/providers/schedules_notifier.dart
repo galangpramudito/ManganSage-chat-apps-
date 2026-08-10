@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/notifications/alarm_service.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../../shared/models/supabase_models.dart';
-import '../data/schedules_api.dart';
 
 /// StreamProvider with Supabase Realtime so whenever Admin opens a new schedule,
 /// ALL devices instantly refresh schedules, show pop-up notification & set alarms!
@@ -14,7 +13,6 @@ final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
 
   debugPrint('⚡ [schedulesListProvider] INITIALIZING STREAM...');
 
-  // Track old schedules to detect new ones for notifications
   List<ScheduleModel> previousSchedules = [];
 
   return supabase
@@ -38,19 +36,20 @@ final schedulesListProvider = StreamProvider<List<ScheduleModel>>((ref) {
       );
     }).toList();
 
-    // Notification logic
+    // Trigger instant notification when admin opens a new schedule
     final currentIds = previousSchedules.map((s) => s.id).toSet();
     for (final s in newSchedules) {
       if (!currentIds.contains(s.id) && previousSchedules.isNotEmpty) {
-        debugPrint('⚡ [schedulesListProvider] NEW SCHEDULE DETECTED! TRIGGERING ALARM.');
+        debugPrint('⚡ [schedulesListProvider] NEW SCHEDULE DETECTED: ${s.title}');
         alarmService.showInstantNotification(
-          title: '📢 JADWAL MATCH BARU DIBUKA!',
-          body: 'Admin baru saja membuka: ${s.title}',
+          title: 'Jadwal Pertandingan: ${s.title}',
+          body: 'Sesi pertandingan baru telah dibuka. Harap konfirmasi presensi Anda.',
         );
       }
     }
-
     previousSchedules = newSchedules;
+
+    // Process schedules for background countdown alarms (15 min reminders)
     _processSchedules(newSchedules, alarmService);
     
     return newSchedules;

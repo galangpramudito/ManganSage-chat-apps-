@@ -33,7 +33,7 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'MANGAN SQUAD',
+          'MNG GROUP',
           style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
         ),
       ),
@@ -460,20 +460,20 @@ class HomeScreen extends ConsumerWidget {
 
     final nowStr = DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now());
     final buffer = StringBuffer();
-    buffer.writeln('🎮 [MANGAN GROUP · VALORANT]');
+    buffer.writeln('📋 [MNG GROUP // VALORANT]');
     buffer.writeln('📅 Tanggal: $nowStr');
     buffer.writeln('');
 
     for (final s in schedules) {
       final start = DateFormat('HH:mm', 'id_ID').format(s.startTime.toLocal());
       final end = DateFormat('HH:mm', 'id_ID').format(s.endTime.toLocal());
-      buffer.writeln('⚔️ Match: ${s.title.toUpperCase()}');
+      buffer.writeln('⚔️ Sesi: ${s.title.toUpperCase()}');
       buffer.writeln('⏰ Waktu: $start — $end WIB');
       buffer.writeln('');
     }
 
-    buffer.writeln('📋 Portal: https://mngesports.my.id');
-    buffer.writeln('📲 Jangan lupa buka aplikasi Mangan Group & kirim presensi!');
+    buffer.writeln('🌐 Portal: https://mngesports.my.id');
+    buffer.writeln('📲 Harap lakukan konfirmasi presensi melalui aplikasi MNG Group.');
 
     Clipboard.setData(ClipboardData(text: buffer.toString()));
 

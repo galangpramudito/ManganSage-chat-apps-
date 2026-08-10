@@ -58,7 +58,7 @@ class _SchedulesScreenState extends ConsumerState<SchedulesScreen> {
                   EmptyState(
                     icon: Icons.history_outlined,
                     title: 'Belum ada riwayat',
-                    subtitle: 'Kamu belum mengisi presensi sama sekali.',
+                    subtitle: 'Belum ada data presensi yang tercatat.',
                   ),
                 ],
               );

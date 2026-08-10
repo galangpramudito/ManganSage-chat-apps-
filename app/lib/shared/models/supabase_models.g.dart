@@ -10,6 +10,7 @@ _SquadMember _$SquadMemberFromJson(Map<String, dynamic> json) => _SquadMember(
   id: json['id'] as String,
   nama: json['nama'] as String,
   role: json['role'] as String,
+  email: json['email'] as String?,
   userId: json['user_id'] as String?,
   createdAt: json['created_at'] == null
       ? null
@@ -24,6 +25,7 @@ Map<String, dynamic> _$SquadMemberToJson(_SquadMember instance) =>
       'id': instance.id,
       'nama': instance.nama,
       'role': instance.role,
+      'email': instance.email,
       'user_id': instance.userId,
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),

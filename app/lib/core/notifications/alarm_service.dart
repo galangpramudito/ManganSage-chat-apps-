@@ -17,9 +17,9 @@ class AlarmService {
   bool _ready = false;
 
   static const _channel = AndroidNotificationChannel(
-    'schedule_alarms',
-    'Alarm Jadwal',
-    description: 'Pengingat deadline jadwal bareng',
+    'mng_schedules',
+    'MNG Schedule Reminders',
+    description: 'Pengingat jadwal pertandingan dan batas presensi',
     importance: Importance.max,
   );
 
@@ -32,7 +32,7 @@ class AlarmService {
     } catch (_) {
       // Fallback ke UTC kalau gagal — alarm tetap jalan, hanya offset risiko.
     }
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
     const iosInit = DarwinInitializationSettings();
     await _plugin.initialize(
       settings: const InitializationSettings(android: androidInit, iOS: iosInit),
@@ -71,11 +71,12 @@ class AlarmService {
         scheduledDate: tz.TZDateTime.from(when, tz.local),
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
-            'schedule_alarms',
-            'Alarm Jadwal',
-            channelDescription: 'Pengingat deadline jadwal bareng',
+            'mng_schedules',
+            'MNG Schedule Reminders',
+            channelDescription: 'Pengingat jadwal pertandingan dan batas presensi',
             importance: Importance.max,
             priority: Priority.high,
+            icon: '@drawable/ic_notification',
           ),
           iOS: DarwinNotificationDetails(),
         ),
@@ -86,25 +87,37 @@ class AlarmService {
     }
   }
 
-  /// Tampilkan notifikasi langsung saat ada jadwal baru atau pengumuman
+  final Map<String, DateTime> _recentNotifications = {};
+
+  /// Tampilkan notifikasi langsung saat ada jadwal baru atau pengumuman (Anti-duplikasi)
   Future<void> showInstantNotification({
     required String title,
     required String body,
     int? id,
   }) async {
+    final key = '$title:$body';
+    final now = DateTime.now();
+    final lastShown = _recentNotifications[key];
+    if (lastShown != null && now.difference(lastShown).inSeconds < 10) {
+      debugPrint('[Alarm] Suppressing duplicate notification: $key');
+      return;
+    }
+    _recentNotifications[key] = now;
+
     await _ensureInit();
     try {
       await _plugin.show(
-        id: id ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        id: id ?? key.hashCode,
         title: title,
         body: body,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
-            'schedule_alarms',
-            'Alarm Jadwal',
-            channelDescription: 'Pengingat deadline jadwal bareng',
+            'mng_schedules',
+            'MNG Schedule Reminders',
+            channelDescription: 'Pengingat jadwal pertandingan dan batas presensi',
             importance: Importance.max,
             priority: Priority.high,
+            icon: '@drawable/ic_notification',
           ),
           iOS: DarwinNotificationDetails(),
         ),
@@ -118,8 +131,8 @@ class AlarmService {
   Future<void> scheduleFor(ScheduleModel s) async {
     await scheduleCustom(
       scheduleId: s.id,
-      title: '⏰ MATCH REMINDER: ${s.title}',
-      body: 'Match MNG akan dimulai dalam 15 menit! Segera kumpul in-game.',
+      title: 'Pengingat Jadwal Pertandingan',
+      body: 'Sesi "${s.title}" akan dimulai dalam 15 menit. Harap bersiap di dalam lobi.',
       scheduledTime: s.startTime.subtract(const Duration(minutes: 15)),
     );
   }
@@ -129,8 +142,8 @@ class AlarmService {
     final closingAlertTime = s.endTime.subtract(const Duration(minutes: 15));
     await scheduleCustom(
       scheduleId: '${s.id}_closing',
-      title: '⚠️ ABSEN HENDAK DITUTUP!',
-      body: 'Absen untuk match "${s.title}" akan ditutup dalam 15 menit! Segera kirim presensi.',
+      title: 'Batas Presensi Segera Ditutup',
+      body: 'Batas konfirmasi presensi untuk sesi "${s.title}" tersisa 15 menit.',
       scheduledTime: closingAlertTime,
     );
   }

@@ -54,6 +54,25 @@ class AuthNotifier extends AsyncNotifier<SquadMember?> {
     }
   }
 
+  Future<void> registerAndLinkEmail({
+    required String nama,
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await ref.read(authApiProvider).registerAndLinkEmail(
+            nama: nama,
+            email: email,
+            password: password,
+          );
+      await setAuthResult(result);
+    } on AuthException catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await ref.read(authApiProvider).logout();

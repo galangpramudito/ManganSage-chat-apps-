@@ -6,12 +6,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/notifications/alarm_service.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/router/app_router.dart';
-import 'core/supabase/supabase_service.dart';
+import 'core/env/env_validator.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
+
+  // Validate environment configuration sebelum start app
+  SupabaseConfig.validate();
 
   // Inisialisasi Supabase resmi yang terhubung langsung ke web mngesports.my.id
   await Supabase.initialize(
@@ -34,7 +37,7 @@ class MangansageApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Mangan Group',
+      title: 'MNG Group',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

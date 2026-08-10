@@ -9,9 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_notifier.dart';
 import '../../shared/models/supabase_models.dart';
-import '../constants/api_constants.dart';
-import '../network/dio_client.dart';
 import '../router/app_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Background handler — HARUS top-level function dengan `@pragma('vm:entry-point')`.
 /// Dipanggil oleh sistem saat app di background/terminated dan FCM masuk.
@@ -34,9 +33,9 @@ class FcmService {
   bool _initialized = false;
 
   static const _androidChannel = AndroidNotificationChannel(
-    'chat_messages',
-    'Pesan Chat',
-    description: 'Notifikasi pesan masuk dari pengguna lain',
+    'mng_group_broadcast',
+    'MNG Group Notifications',
+    description: 'Notifikasi operasional dan pengumuman resmi MNG Group',
     importance: Importance.high,
   );
 
@@ -126,7 +125,7 @@ class FcmService {
   }
 
   Future<void> _initLocalNotifications() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
     const iosInit = DarwinInitializationSettings();
     await _localNotif.initialize(
       settings: const InitializationSettings(android: androidInit, iOS: iosInit),
@@ -153,11 +152,44 @@ class FcmService {
 
   Future<void> _sendTokenToBackend(String token) async {
     try {
-      await _ref.read(dioProvider).post(
-        ApiConstants.fcmToken,
-        data: {'fcm_token': token},
-      );
-      debugPrint('[FCM] token registered');
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        debugPrint('[FCM] Cannot save token: user not authenticated');
+        return;
+      }
+
+      final platformStr = defaultTargetPlatform == TargetPlatform.android
+          ? 'android'
+          : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'unknown');
+      final deviceInfo = {
+        'sdk': defaultTargetPlatform.name,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      // 1. Try secure RPC function
+      try {
+        await client.rpc('save_fcm_token', params: {
+          'p_token': token,
+          'p_platform': platformStr,
+          'p_device_info': deviceInfo,
+        });
+        debugPrint('[FCM] token registered to Supabase via RPC');
+        return;
+      } catch (rpcError) {
+        debugPrint('[FCM] RPC save failed: $rpcError, falling back to direct table upsert...');
+      }
+
+      // 2. Fallback to direct table upsert
+      await client.from('fcm_tokens').upsert({
+        'user_id': userId,
+        'token': token,
+        'platform': platformStr,
+        'device_info': deviceInfo,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'token');
+
+      debugPrint('[FCM] token registered to Supabase via table upsert');
     } catch (e) {
       debugPrint('[FCM] token register failed: $e');
     }
@@ -170,7 +202,7 @@ class FcmService {
 
     _localNotif.show(
       id: message.hashCode,
-      title: n.title ?? 'Mangan Group',
+      title: n.title ?? 'MNG GROUP',
       body: n.body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
@@ -179,6 +211,7 @@ class FcmService {
           channelDescription: _androidChannel.description,
           importance: Importance.high,
           priority: Priority.high,
+          icon: '@drawable/ic_notification',
         ),
         iOS: const DarwinNotificationDetails(),
       ),

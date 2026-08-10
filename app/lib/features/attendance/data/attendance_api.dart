@@ -113,7 +113,7 @@ class AttendanceApi {
       );
 
       try {
-        await _supabase.storage.from(SupabaseConfig.storageBucket).uploadBinary(
+        await _supabase.storage.from('image').uploadBinary(
               uniqueFileName,
               imageBytes,
               fileOptions: const FileOptions(
@@ -127,7 +127,7 @@ class AttendanceApi {
       }
 
       uploadedImageUrl = _supabase.storage
-          .from(SupabaseConfig.storageBucket)
+          .from('image')
           .getPublicUrl(uniqueFileName);
     } else if (!isIzin) {
       throw Exception('Wajib melampirkan foto bukti screenshot lobby Valorant!');
