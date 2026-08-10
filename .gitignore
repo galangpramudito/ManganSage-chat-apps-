@@ -25,6 +25,12 @@ deploy.tar
 **/.docker/local.env*
 **/.docker/production.env*
 
+# Firebase config / credentials
+**/google-services.json
+!**/google-services.json.example
+**/GoogleService-Info.plist
+!**/GoogleService-Info.plist.example
+
 # OS / editor
 .DS_Store
 Thumbs.db

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "617459846864",
-    "project_id": "mangan-group",
-    "storage_bucket": "mangan-group.firebasestorage.app"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_PROJECT_ID.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:617459846864:android:2aa7ac56456d5f6d5f18d5",
+        "mobilesdk_app_id": "YOUR_MOBILE_SDK_APP_ID",
         "android_client_info": {
           "package_name": "com.mangangroup.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBakpfVI-_Q_Edy93ycK_iU7hSRA_xwpKE"
+          "current_key": "YOUR_FIREBASE_API_KEY_HERE"
         }
       ],
       "services": {
