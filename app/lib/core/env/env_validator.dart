@@ -54,9 +54,9 @@ class SupabaseConfig {
         );
       }
       
-      // Check Anon Key
+      // Check Anon / Publishable Key
       final testKey = anonKey;
-      if (testKey.length < 100) {
+      if (testKey.length < 20) {
         throw _ConfigurationException(
           'SUPABASE_ANON_KEY seems invalid (too short). Check your .env file.',
         );
