@@ -318,8 +318,6 @@ class _MemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = user.role.toLowerCase().contains('admin');
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -372,29 +370,11 @@ class _MemberCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (isAdmin) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: isDark ? Colors.white : Colors.black),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Text(
-                          'ADMIN',
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  user.role.toUpperCase(),
+                  'MEMBER',
                   style: GoogleFonts.inter(
                     color: isDark ? AppColors.mono400 : AppColors.mono700,
                     fontSize: 11,

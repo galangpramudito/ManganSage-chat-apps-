@@ -13,11 +13,17 @@ class SquadApi {
     try {
       final List<dynamic> res = await _supabase
           .from('squad_members')
-          .select('id, nama, role, user_id, created_at, updated_at')
+          .select('id, nama, role, email, user_id, created_at')
+          .neq('role', 'admin')
           .order('nama', ascending: true);
 
-      return res.map((m) => SquadMember.fromJson(m as Map<String, dynamic>)).toList();
-    } catch (e) {
+      return res
+          .map((m) => SquadMember.fromJson(m as Map<String, dynamic>))
+          .where((m) => !m.role.toLowerCase().contains('admin'))
+          .toList();
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('⚠️ Error getMembers: $e\n$stack');
       return [];
     }
   }
@@ -26,19 +32,21 @@ class SquadApi {
     try {
       final List<dynamic> res = await _supabase
           .from('mvps')
-          .select('id, rank, pts, created_at, member_id, squad_members(nama)')
-          .order('pts', ascending: false);
+          .select('id, rank, pts, squad_members(nama)')
+          .order('rank', ascending: true);
 
       return res.map((m) {
         final map = Map<String, dynamic>.from(m as Map);
-        if (map['squad_members'] != null) {
-          map['nama'] = map['squad_members']['nama'];
+        if (map['squad_members'] != null && map['squad_members'] is Map) {
+          map['nama'] = map['squad_members']['nama'] ?? 'Unknown';
         } else {
           map['nama'] = 'Unknown';
         }
         return Mvp.fromJson(map);
       }).toList();
-    } catch (e) {
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('⚠️ Error getLeaderboard: $e\n$stack');
       return [];
     }
   }

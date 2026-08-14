@@ -1,477 +1,143 @@
-# 🚀 Mangan Group Mobile App - Auto Release System
+# 🚀 Mangan Group Mobile App - In-App Auto Update & Release System
 
-Sistem otomatis untuk build, publish, dan distribute update aplikasi Flutter menggunakan GitHub Actions.
-
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Setup (One-Time)](#setup-one-time)
-- [Release New Version](#release-new-version)
-- [Troubleshooting](#troubleshooting)
-- [Architecture](#architecture)
+Dokumentasi lengkap sistem update otomatis (CI/CD) untuk aplikasi Flutter **Mangan Group**. Sistem ini memungkinkan developer merilis update aplikasi (perombakan UI, logic, routing, dependensi, hingga kode native) hanya dengan melakukan `git push tag`. Pengguna akan menerima notifikasi update langsung di dalam aplikasi dan mengunduhnya secara otomatis.
 
 ---
 
-## 🎯 Overview
+## 📋 Daftar Isi
 
-### **Workflow Otomatis:**
+1. [Cara Kerja Sistem (Architecture)](#-cara-kerja-sistem)
+2. [Langkah Rilis Versi Baru (Quick Cheatsheet)](#-langkah-rilis-versi-baru-30-detik)
+3. [Mengapa Semua Perubahan Pasti Ter-update?](#-mengapa-semua-perubahan-pasti-ter-update)
+4. [Konfigurasi & Komponen Utama](#-konfigurasi--komponen-utama)
+5. [Aturan Penting (Best Practices)](#-aturan-penting-best-practices)
+6. [Troubleshooting & Solusi Kendala](#-troubleshooting--solusi-kendala)
+
+---
+
+## 🎯 Cara Kerja Sistem
 
 ```
-Developer push tag → GitHub Actions → Build APK → Upload to GitHub Releases → Update Supabase → Users notified
+[Developer]
+    │
+    ▼ (1. Bump version di pubspec.yaml & git tag vX.Y.Z)
+[GitHub Repository]
+    │
+    ▼ (2. Trigger GitHub Actions CI/CD)
+[GitHub Actions Runner]
+    ├─► Build Flutter APK (flutter build apk --release)
+    ├─► Hitung SHA-256 Checksum file APK
+    ├─► Upload `app-release.apk` ke GitHub Releases (Storage Unlimited)
+    └─► Daftarkan metadata rilis ke tabel Supabase `app_releases`
+           │
+           ▼
+[Supabase Database (`app_releases`)]
+    │
+    ▼ (3. Aplikasi user mendeteksi `build_number` baru)
+[Flutter App (User)]
+    ├─► Muncul dialog update otomatis / cek via menu Profil
+    ├─► Unduh `app-release.apk` dari GitHub CDN
+    ├─► Verifikasi integritas APK dengan SHA-256 Checksum
+    └─► Buka Android Package Installer untuk menimpa instalasi lama
 ```
 
-### **Keuntungan:**
-
-- ✅ **Unlimited Storage** - GitHub Releases (no 50 MB limit)
-- ✅ **Fully Automated** - Build, checksum, upload, database update
-- ✅ **Security** - SHA-256 APK verification
-- ✅ **Fast CDN** - GitHub global network
-- ✅ **Version Control** - All releases tracked
-
 ---
 
-## ⚡ Quick Start
+## ⚡ Langkah Rilis Versi Baru (30 Detik)
 
-### **Cara Release Version Baru (30 detik):**
+Setiap kali ada fitur baru atau perbaikan bug yang ingin disebarkan ke user/teman:
 
-```powershell
-# 1. Bump version di app/pubspec.yaml
-# version: 1.2.3+6 → 1.2.4+7
-
-# 2. Create & push tag
-cd "Z:\PROJECTS\VsCode\MANGAN GROUP\app project"
-git add app/pubspec.yaml
-git commit -m "Release v1.2.4"
-git push origin main
-git tag v1.2.4
-git push origin v1.2.4
-
-# 3. Done! Workflow auto-triggered ✅
-# Wait 5-10 minutes, APK ready di GitHub Releases
-```
-
-**Monitor progress:**
-- 👉 https://github.com/galangpramudito/ManganSage-chat-apps-/actions
-
-**Download APK:**
-- 👉 https://github.com/galangpramudito/ManganSage-chat-apps-/releases
-
----
-
-## 🔧 Setup (One-Time)
-
-> **⚠️ Setup ini SUDAH SELESAI!** Section ini untuk reference jika perlu setup ulang.
-
-### **1. GitHub Secrets** ✅
-
-Required secrets (Settings → Secrets and variables → Actions):
-
-| Secret Name | Value | Purpose |
-|-------------|-------|---------|
-| `SUPABASE_URL` | `https://vcsvbeepbzmcfnwapqog.supabase.co` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGc...` (secret key) | Admin access untuk update database |
-| `SUPABASE_ANON_KEY` | `eyJhbGc...` (public key) | Public API key untuk app |
-| `GOOGLE_SERVICES_JSON` | `{...}` (full JSON content) | Firebase config untuk push notifications |
-
-**How to add:**
-1. GitHub repo → Settings → Secrets and variables → Actions
-2. Click "New repository secret"
-3. Name: (pilih dari table di atas)
-4. Value: (paste value)
-5. Add secret
-
----
-
-### **2. Workflow File** ✅
-
-File: `.github/workflows/release-apk.yml`
-
-**Location:** Root repo (BUKAN di subfolder `app/`)
-
-**Trigger:** Push tag dengan format `v*.*.*`
-
-**Working directory:** `app/` (Flutter app di subfolder)
-
----
-
-### **3. Database Migration** ✅
-
-Table `app_releases` dengan columns:
-- `version` (TEXT) - e.g., "1.2.3"
-- `build_number` (INTEGER UNIQUE) - e.g., 6
-- `download_url` (TEXT) - GitHub release URL
-- `sha256_checksum` (TEXT) - Security verification
-- `release_notes` (TEXT) - Optional notes
-- `force_update` (BOOLEAN) - User must update?
-
-**Migration file:** `web project/supabase/migrations/20260814000003_simple_enhance.sql`
-
----
-
-## 🚀 Release New Version
-
-### **Step-by-Step:**
-
-#### **1. Edit Version di `app/pubspec.yaml`:**
-
+### 1. Naikkan Versi di `app/pubspec.yaml`
+Buka [pubspec.yaml](file:///z:/PROJECTS/VsCode/MANGAN%20GROUP/app%20project/app/pubspec.yaml), ubah baris `version`:
 ```yaml
-# Current
-version: 1.2.3+6
-
-# New (increment both version AND build number)
-version: 1.2.4+7
+# Format: version: <version_name>+<build_number>
+# CONTOH:
+version: 1.2.9+12  # Naikkan X.Y.Z dan WAJIB naikkan angka build number (+12)
 ```
 
-**Rules:**
-- ✅ Build number (+7) HARUS lebih besar dari sebelumnya
-- ✅ Version (1.2.4) bisa sama atau increment
-- ❌ JANGAN reuse build number yang sudah pernah dipakai
-
----
-
-#### **2. Commit & Push:**
-
+### 2. Commit & Push Tag ke GitHub
+Jalankan perintah berikut di terminal:
 ```powershell
 cd "Z:\PROJECTS\VsCode\MANGAN GROUP\app project"
 
-# Commit version bump
-git add app/pubspec.yaml
-git commit -m "Bump version to v1.2.4"
+# 1. Simpan perubahan kode
+git add .
+git commit -m "feat: deskripsi perubahan update"
 git push origin main
+
+# 2. Buat tag baru (sesuai versi di pubspec) dan push
+git tag v1.2.9
+git push origin v1.2.9
 ```
+
+### 3. Selesai! ✅
+- GitHub Actions akan otomatis melakukan build (memerlukan waktu ~5-8 menit).
+- Pantau status build: 👉 [GitHub Actions Runs](https://github.com/galangpramudito/ManganSage-chat-apps-/actions)
+- Setelah sukses (hijau), semua user yang membuka aplikasi versi lama akan langsung mendapat notifikasi update.
 
 ---
 
-#### **3. Create & Push Tag:**
+## 💡 Mengapa Semua Perubahan Pasti Ter-update?
 
-```powershell
-# Format tag: v{VERSION}
-git tag v1.2.4
-
-# Push tag (ini yang trigger workflow!)
-git push origin v1.2.4
-```
-
-**Expected output:**
-```
-Total 0 (delta 0), reused 0 (delta 0)
-To https://github.com/galangpramudito/ManganSage-chat-apps-.git
- * [new tag]         v1.2.4 -> v1.2.4
-```
+Sistem ini menggunakan metode **Full Binary Replacement (In-Place Upgrade)**:
+- **Kompilasi Penuh:** GitHub Actions mengompilasi ulang seluruh project Flutter dari awal (`flutter build apk --release`).
+- **Mendukung Segala Perubahan:**
+  - ✅ Perubahan UI / Layout / Assets / Font
+  - ✅ Perombakan Struktur Routing (`go_router`)
+  - ✅ Penambahan dependensi paket baru di `pubspec.yaml`
+  - ✅ Penambahan atau perubahan permission native Android
+  - ✅ Update logic Riverpod / State Management
+- **Data User Tetap Aman:** Saat Android menimpa file APK lama dengan APK baru, sesi login dan storage lokal user tetap tersimpan.
 
 ---
 
-#### **4. Monitor Workflow:**
+## 🔧 Konfigurasi & Komponen Utama
 
-**Open Actions page:**
-```
-https://github.com/galangpramudito/ManganSage-chat-apps-/actions
-```
+### 1. GitHub Actions Workflow
+File: [release-apk.yml](file:///z:/PROJECTS/VsCode/MANGAN%20GROUP/app%20project/.github/workflows/release-apk.yml) *(Wajib berada di root repository `/.github/workflows/`)*.
 
-**Workflow stages (5-10 minutes total):**
-1. 🟡 Setup Java & Flutter (2 min)
-2. 🟡 Install dependencies (1 min)
-3. 🟡 Build APK (3-5 min)
-4. 🟡 Calculate SHA-256 checksum (10 sec)
-5. 🟡 Create GitHub Release (30 sec)
-6. 🟡 Update Supabase database (10 sec)
-7. 🟢 **Done!** ✅
+Poin penting di workflow:
+- Path file upload ke release: `app/build/app/outputs/flutter-apk/app-release.apk`
+- Menggunakan `curl -f` untuk memastikan workflow gagal jika ada kendala koneksi ke database Supabase.
+- Nama file asset yang dirilis: `app-release.apk`.
 
----
+### 2. GitHub Secrets yang Wajib Ada
+Disetel di: **Settings > Secrets and variables > Actions**
+| Nama Secret | Deskripsi / Nilai |
+|---|---|
+| `SUPABASE_URL` | URL project Supabase (`https://vcsvbeepbzmcfnwapqog.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret Key Supabase (`sb_secret_...`) untuk insert ke tabel rilis |
+| `SUPABASE_ANON_KEY` | Anon Key Supabase untuk build aplikasi |
+| `GOOGLE_SERVICES_JSON` | Konten lengkap file `google-services.json` Firebase |
 
-#### **5. Verify Release:**
-
-**A. Check GitHub Releases:**
-```
-https://github.com/galangpramudito/ManganSage-chat-apps-/releases
-```
-
-Should see:
-- Release `v1.2.4`
-- APK file: `mangan-group-1.2.4.apk`
-- SHA-256 checksum listed
-
-**B. Check Supabase Database:**
-
-Supabase Dashboard → Table Editor → `app_releases`
-
-New record:
-```
-version: 1.2.4
-build_number: 7
-download_url: https://github.com/.../v1.2.4/mangan-group-1.2.4.apk
-sha256_checksum: abc123... (64 chars)
-```
-
-**C. Test Flutter App:**
-
-Open app (with build < 7) → Should show update dialog ✅
+### 3. Service di Aplikasi Flutter
+- **[app_updater_service.dart](file:///z:/PROJECTS/VsCode/MANGAN%20GROUP/app%20project/app/lib/core/updater/app_updater_service.dart):** Bertanggung jawab mengecek rilis tertinggi di tabel `app_releases`, mengunduh APK via `Dio`, memicu verifikasi checksum, dan membuka installer via `open_filex`.
+- **[checksum_verifier.dart](file:///z:/PROJECTS/VsCode/MANGAN%20GROUP/app%20project/app/lib/core/updater/checksum_verifier.dart):** Menghitung hash SHA-256 file yang terunduh dan mencocokkannya dengan `sha256_checksum` dari database untuk menjamin keamanan file.
 
 ---
 
-## 🐛 Troubleshooting
+## ⚠️ Aturan Penting (Best Practices)
 
-### **Problem: Workflow Tidak Trigger**
-
-**Symptoms:** Actions page kosong setelah push tag
-
-**Causes & Solutions:**
-
-1. **Tag format salah**
-   ```powershell
-   # ❌ Wrong
-   git tag 1.2.4          # Missing 'v'
-   git tag release-1.2.4  # Wrong format
-   
-   # ✅ Correct
-   git tag v1.2.4
-   ```
-
-2. **Workflow file tidak di root**
-   ```
-   ❌ app/.github/workflows/release-apk.yml
-   ✅ .github/workflows/release-apk.yml
-   ```
-
-3. **Tag sudah ada**
-   ```powershell
-   # Error: tag 'v1.2.4' already exists
-   
-   # Solution: Use new tag
-   git tag v1.2.5
-   
-   # Or delete & recreate
-   git tag -d v1.2.4
-   git push origin --delete v1.2.4
-   git tag v1.2.4
-   git push origin v1.2.4
-   ```
+1. **Build Number Wajib Selalu Bertambah:**
+   Android dan logika aplikasi membandingkan `build_number` (angka setelah tanda `+`). Jika versi saat ini `+11`, versi berikutnya harus `+12` atau lebih tinggi.
+2. **Format Tag Harus Menggunakan Huruf `v`:**
+   Trigger GitHub Actions membutuhkan format `v*.*.*` (contoh: `v1.2.9`, `v2.0.0`).
+3. **Jangan Mengubah Keystore / Signature:**
+   Android hanya mengizinkan update menimpa aplikasi lama jika kedua APK menggunakan signature key yang sama.
+4. **Hanya Edit Workflow di Root:**
+   Jangan membuat atau mengedit file workflow di dalam subfolder `app/.github/...`, karena GitHub hanya mengeksekusi workflow dari root direktori repo.
 
 ---
 
-### **Problem: Workflow Failed**
+## 🐛 Troubleshooting & Solusi Kendala
 
-**Symptoms:** Red X di Actions page
-
-**Check logs:**
-1. Click failed workflow
-2. Click failed step
-3. Read error message
-
-**Common errors:**
-
-#### **A. Missing Secret**
-```
-Error: secret GOOGLE_SERVICES_JSON not found
-```
-
-**Solution:** Add missing secret di Settings → Secrets
+| Gejala Masalah | Penyebab | Solusi |
+|---|---|---|
+| **Aplikasi unduh file HTML / 404 Not Found** | Nama file di GitHub Release tidak cocok dengan URL di Supabase. | Pastikan workflow mengupload file `app-release.apk` dan URL di database menunjuk ke file tersebut. |
+| **Gagal verifikasi integritas APK** | File APK korup atau URL mengembalikan respon error 404 (HTML). | Periksa apakah file APK benar-benar ada di tab Assets pada rilis GitHub terkait. |
+| **Workflow sukses tapi database tidak ter-update** | Secret `SUPABASE_SERVICE_ROLE_KEY` kedaluwarsa / salah. | Perbarui secret di GitHub Actions dengan secret key (`sb_secret_...`) yang masih aktif dari Dashboard Supabase. |
+| **Workflow tidak jalan setelah push tag** | Format tag salah atau tag sudah pernah ada. | Pastikan tag diawali huruf `v` (misal `v1.2.9`). Jika tag pernah dibuat, hapus dulu tag lokal & remote atau gunakan nomor versi baru. |
 
 ---
 
-#### **B. Build Failed**
-```
-FAILURE: Build failed with an exception
-```
-
-**Solution:** 
-1. Test build locally: `flutter build apk --release`
-2. Fix errors di local
-3. Commit & push
-4. Re-trigger workflow
-
----
-
-#### **C. Database Insert Failed**
-```
-Error: duplicate key violates unique constraint
-```
-
-**Cause:** Build number sudah dipakai
-
-**Solution:** Increment build number di pubspec.yaml
-
----
-
-### **Problem: APK Size Too Large**
-
-**Symptoms:** File > 50 MB (not an issue with GitHub, just FYI)
-
-**Solution:** Workflow already builds universal APK. If needed:
-
-```powershell
-# Edit workflow to build split APK
-flutter build apk --split-per-abi --release
-```
-
----
-
-### **Problem: Update Tidak Muncul di App**
-
-**Symptoms:** Open app, no update dialog
-
-**Checks:**
-
-1. **Build number correct?**
-   ```sql
-   -- Supabase SQL Editor
-   SELECT build_number FROM app_releases ORDER BY build_number DESC LIMIT 1;
-   ```
-   
-   Should be GREATER than app build number.
-
-2. **App connected to internet?**
-   Check console log for update check.
-
-3. **Database updated?**
-   Check `app_releases` table has new record.
-
----
-
-## 🏗️ Architecture
-
-### **System Components:**
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     DEVELOPER                           │
-│  1. Edit code                                           │
-│  2. Bump version in pubspec.yaml                        │
-│  3. git tag v1.2.4 && git push --tags                   │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────┐
-│              GITHUB ACTIONS (CI/CD)                     │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │ 1. Checkout code                                  │  │
-│  │ 2. Setup Java + Flutter                           │  │
-│  │ 3. Install dependencies                           │  │
-│  │ 4. Create .env & google-services.json (secrets)   │  │
-│  │ 5. Run code generation (build_runner)             │  │
-│  │ 6. Build APK (flutter build apk --release)        │  │
-│  │ 7. Calculate SHA-256 checksum                     │  │
-│  │ 8. Create GitHub Release                          │  │
-│  │ 9. Upload APK to GitHub Releases                  │  │
-│  │ 10. Insert to Supabase app_releases table         │  │
-│  └───────────────────────────────────────────────────┘  │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ├──────────────┬─────────────────────────┐
-                 ▼              ▼                         ▼
-      ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐
-      │   GITHUB     │  │  SUPABASE   │  │  FLUTTER APP     │
-      │   RELEASES   │  │  DATABASE   │  │   (Users)        │
-      │              │  │             │  │                  │
-      │ APK Storage  │  │ app_releases│  │ 1. Check update  │
-      │ (Unlimited)  │  │   table     │  │ 2. Download APK  │
-      │              │  │             │  │ 3. Verify SHA256 │
-      │ Download:    │  │ Version:    │  │ 4. Install       │
-      │ github.com/  │  │  1.2.4      │  │                  │
-      │ .../releases │  │ Build: 7    │  │                  │
-      │              │  │ URL: github │  │                  │
-      └──────────────┘  └─────────────┘  └──────────────────┘
-```
-
----
-
-### **Security Flow:**
-
-```
-1. Developer builds APK locally
-2. GitHub Actions calculates SHA-256: abc123...
-3. Stores in database: sha256_checksum = "abc123..."
-4. User downloads APK from GitHub
-5. Flutter app calculates SHA-256 of downloaded file
-6. Compare: downloaded_hash == database_hash?
-   ├─ ✅ Match → Install (safe)
-   └─ ❌ Mismatch → Delete + error (tampered file)
-```
-
----
-
-## 📊 Monitoring & Analytics
-
-### **Track Release Adoption:**
-
-```sql
--- Check active versions
-SELECT 
-  version,
-  build_number,
-  created_at,
-  download_url
-FROM app_releases
-ORDER BY build_number DESC;
-```
-
-### **Workflow History:**
-
-```
-https://github.com/galangpramudito/ManganSage-chat-apps-/actions/workflows/release-apk.yml
-```
-
----
-
-## 📝 Release Checklist
-
-Use this checklist for every release:
-
-```
-[ ] Code changes tested locally
-[ ] Version bumped in app/pubspec.yaml (increment build_number!)
-[ ] Committed & pushed to main
-[ ] Tag created: git tag v1.2.4
-[ ] Tag pushed: git push origin v1.2.4
-[ ] Workflow triggered (check Actions page)
-[ ] Workflow completed successfully (green check)
-[ ] GitHub Release created with APK
-[ ] Supabase database updated
-[ ] Tested update notification in app
-[ ] Announced to users (if major release)
-```
-
----
-
-## 🔗 Useful Links
-
-- **GitHub Actions:** https://github.com/galangpramudito/ManganSage-chat-apps-/actions
-- **GitHub Releases:** https://github.com/galangpramudito/ManganSage-chat-apps-/releases
-- **Supabase Dashboard:** https://supabase.com/dashboard/project/vcsvbeepbzmcfnwapqog
-- **Workflow File:** `.github/workflows/release-apk.yml`
-
----
-
-## 📚 Additional Documentation
-
-- **[Full Setup Guide](GITHUB_ACTIONS_RELEASE_GUIDE.md)** - Complete documentation
-- **[System Improvements](UPDATE_SYSTEM_IMPROVEMENTS.md)** - Future enhancements roadmap
-- **[Audit Report](AUDIT_REPORT_2026-08-14.md)** - Security audit & implementation details
-
----
-
-## 💡 Pro Tips
-
-1. **Always increment build_number** - Never reuse!
-2. **Tag format matters** - Must be `v{X.Y.Z}` (with 'v' prefix)
-3. **Monitor first 24h** - Check for user reports after release
-4. **Keep APKs accessible** - GitHub Releases stores all versions
-5. **Test before release** - Build locally first: `flutter build apk --release`
-
----
-
-## 🆘 Support
-
-**Issues or questions?**
-- Check [Troubleshooting](#troubleshooting) section
-- Review [GitHub Actions logs](https://github.com/galangpramudito/ManganSage-chat-apps-/actions)
-- Contact development team
-
----
-
-**Last Updated:** 2026-08-14  
-**System Version:** 1.0  
-**Status:** ✅ Production Ready
+*Dokumentasi diperbarui: Agustus 2026*
