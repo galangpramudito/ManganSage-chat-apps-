@@ -94,7 +94,7 @@ class SquadScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Sinkronisasi data real-time dengan portal mngesports.my.id',
+                    'Sinkronisasi data real-time • Portal Cloud Active',
                     style: AppTypography.bodyText(isDark),
                   ),
                 ],
