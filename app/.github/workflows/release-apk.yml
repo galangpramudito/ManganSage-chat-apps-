@@ -1,0 +1,123 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on tags like v1.3.0
+
+jobs:
+  build:
+    name: Build APK and Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # 2. Setup Java (required for Android build)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      # 3. Setup Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'  # Adjust to your version
+          channel: 'stable'
+      
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+      
+      # 5. Build APK (split per ABI untuk size < 50 MB)
+      - name: Build APK
+        run: flutter build apk --split-per-abi --release
+      
+      # 6. Get version from pubspec.yaml
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//')
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION (Build $BUILD_NUMBER)"
+      
+      # 7. Calculate SHA-256 checksums
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          ARM64_CHECKSUM=$(sha256sum build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | awk '{print $1}')
+          ARMV7_CHECKSUM=$(sha256sum build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk | awk '{print $1}')
+          echo "ARM64_CHECKSUM=$ARM64_CHECKSUM" >> $GITHUB_OUTPUT
+          echo "ARMV7_CHECKSUM=$ARMV7_CHECKSUM" >> $GITHUB_OUTPUT
+          echo "arm64 checksum: $ARM64_CHECKSUM"
+          echo "armv7 checksum: $ARMV7_CHECKSUM"
+      
+      # 8. Rename APK files
+      - name: Rename APK files
+        run: |
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+             build/app/outputs/flutter-apk/mangan-group-${{ steps.version.outputs.VERSION }}-arm64-v8a.apk
+          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+             build/app/outputs/flutter-apk/mangan-group-${{ steps.version.outputs.VERSION }}-armeabi-v7a.apk
+      
+      # 9. Create GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Mangan Group App v${{ steps.version.outputs.VERSION }}
+            Build: ${{ steps.version.outputs.BUILD_NUMBER }}
+            
+            ### Download:
+            - **arm64-v8a** (recommended, modern devices): [Download](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mangan-group-${{ steps.version.outputs.VERSION }}-arm64-v8a.apk)
+            - **armeabi-v7a** (older devices): [Download](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mangan-group-${{ steps.version.outputs.VERSION }}-armeabi-v7a.apk)
+            
+            ### Checksums (SHA-256):
+            - arm64-v8a: `${{ steps.checksums.outputs.ARM64_CHECKSUM }}`
+            - armeabi-v7a: `${{ steps.checksums.outputs.ARMV7_CHECKSUM }}`
+            
+            ### Installation:
+            1. Download APK sesuai device Anda (most devices: arm64-v8a)
+            2. Install APK
+            3. Done!
+          files: |
+            build/app/outputs/flutter-apk/mangan-group-*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # 10. Insert to Supabase database
+      - name: Update Supabase database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Get download URL from GitHub release
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mangan-group-${{ steps.version.outputs.VERSION }}-arm64-v8a.apk"
+          
+          # Insert to database
+          curl -X POST "$SUPABASE_URL/rest/v1/app_releases" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d '{
+              "version": "${{ steps.version.outputs.VERSION }}",
+              "build_number": ${{ steps.version.outputs.BUILD_NUMBER }},
+              "download_url": "'"$DOWNLOAD_URL"'",
+              "sha256_checksum": "${{ steps.checksums.outputs.ARM64_CHECKSUM }}",
+              "release_notes": "Auto-released via GitHub Actions",
+              "force_update": false
+            }'
+          
+          echo "✅ Database updated with new release!"
