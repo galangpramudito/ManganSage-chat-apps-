@@ -8,9 +8,11 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/updater/app_updater_provider.dart';
 import '../../../shared/models/supabase_models.dart';
 import '../../../shared/widgets/attendance_badge.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/update_dialog.dart';
 import '../../attendance/providers/attendance_notifier.dart';
 import '../../auth/providers/auth_notifier.dart';
 import '../providers/announcements_notifier.dart';
@@ -30,6 +32,16 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // Cek update saat home screen pertama kali dimuat
+    ref.listen<AsyncValue<AppRelease?>>(appUpdateCheckerProvider, (prev, next) {
+      if (next.hasValue) {
+        final release = next.value;
+        if (release != null && (prev == null || !prev.hasValue || prev.value == null)) {
+          showUpdateDialog(context, ref, release);
+        }
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -39,6 +51,7 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          ref.invalidate(appUpdateCheckerProvider);
           ref.invalidate(activeAnnouncementProvider);
           ref.invalidate(schedulesListProvider);
           ref.invalidate(myAttendanceHistoryProvider);
@@ -50,6 +63,7 @@ class HomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             if (user != null) _buildProfileHeader(context, user, isDark),
+            _buildUpdateBanner(context, isDark, ref),
             const SizedBox(height: AppSpacing.sm),
             _buildAnnouncement(context, isDark, ref),
             const SizedBox(height: AppSpacing.sm),
@@ -104,6 +118,76 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Banner reminder pembaruan jika user memilih 'Nanti' pada popup
+  Widget _buildUpdateBanner(BuildContext context, bool isDark, WidgetRef ref) {
+    final asyncRelease = ref.watch(appUpdateCheckerProvider);
+    return asyncRelease.maybeWhen(
+      data: (release) {
+        if (release == null) return const SizedBox.shrink();
+        return Container(
+          margin: const EdgeInsets.only(top: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade900.withValues(alpha: isDark ? 0.25 : 0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.amber.shade700),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.system_update_alt_rounded, color: Colors.amber.shade400, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PEMBARUAN TERSEDIA (v${release.version})',
+                      style: GoogleFonts.inter(
+                        color: Colors.amber.shade400,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Versi baru siap dipasang. Ketuk untuk memperbarui.',
+                      style: AppTypography.bodyText(isDark).copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber.shade600,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                  elevation: 0,
+                  minimumSize: const Size(60, 32),
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  showUpdateDialog(context, ref, release);
+                },
+                child: Text(
+                  'UPDATE',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 

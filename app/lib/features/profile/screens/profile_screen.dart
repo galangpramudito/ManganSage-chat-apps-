@@ -10,8 +10,10 @@ import '../../../core/notifications/notification_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/updater/app_updater_service.dart';
 import '../../../shared/widgets/avatar_widget.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/update_dialog.dart';
 import '../../attendance/providers/attendance_notifier.dart';
 import '../../auth/providers/auth_notifier.dart';
 import '../../schedules/providers/schedules_notifier.dart';
@@ -169,6 +171,56 @@ class ProfileScreen extends ConsumerWidget {
                               const SizedBox(height: 2),
                               Text(
                                 'Kelola alarm match, reminder deadline, & tes notifikasi',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: isDark ? AppColors.mono400 : AppColors.mono700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: isDark ? AppColors.mono400 : AppColors.mono600),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // ─── Check Update Tile ─────────────────────────────────────
+                InkWell(
+                  onTap: () => _handleCheckUpdate(context, ref),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.mono900 : AppColors.backgroundLight,
+                      border: Border.all(color: isDark ? AppColors.mono800 : AppColors.mono200),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.system_update_alt_rounded,
+                          size: 20,
+                          color: Colors.blue.shade400,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PERIKSA PEMBARUAN APLIKASI',
+                                style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Cek ketersediaan versi terbaru secara langsung',
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   color: isDark ? AppColors.mono400 : AppColors.mono700,
@@ -460,6 +512,44 @@ class ProfileScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _handleCheckUpdate(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: const [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('Memeriksa pembaruan sistem...'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final release = await AppUpdaterService.checkForUpdate();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    if (release != null) {
+      showUpdateDialog(context, ref, release);
+    } else {
+      final currentVer = await AppUpdaterService.getCurrentVersionString();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Aplikasi sudah menggunakan versi terbaru ($currentVer).'),
+          backgroundColor: AppColors.statusPresent,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
