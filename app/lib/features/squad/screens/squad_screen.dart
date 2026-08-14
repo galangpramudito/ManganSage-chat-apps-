@@ -26,24 +26,6 @@ class SquadScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white : Colors.black,
-                border: Border.all(color: isDark ? Colors.white : Colors.black),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(
-                'MNG',
-                style: GoogleFonts.montserrat(
-                  color: isDark ? Colors.black : Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                  letterSpacing: 2.0,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
             Text(
               'ROSTER & LEADERBOARD',
               style: AppTypography.headingTitle(isDark).copyWith(fontSize: 16),
