@@ -82,25 +82,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (activeEmail != null && activeEmail.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.email_outlined, size: 14, color: isDark ? AppColors.mono400 : AppColors.mono600),
-                            const SizedBox(width: 6),
-                            Text(
-                              activeEmail,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? AppColors.mono300 : AppColors.mono700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
@@ -343,26 +325,32 @@ class ProfileScreen extends ConsumerWidget {
 
                 // ─── App Version & Info Footer ─────────────────────────────
                 Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'MNG GROUP // VALORANT',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2.0,
-                          color: isDark ? AppColors.mono600 : AppColors.mono400,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Version 1.2.0 (Build 2) • Internal System',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: isDark ? AppColors.mono700 : AppColors.mono400,
-                        ),
-                      ),
-                    ],
+                  child: FutureBuilder<String>(
+                    future: AppUpdaterService.getCurrentVersionString(),
+                    builder: (context, snapshot) {
+                      final versionText = snapshot.data ?? 'Version 1.2.0 (Build 2)';
+                      return Column(
+                        children: [
+                          Text(
+                            'MNG GROUP // VALORANT',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.0,
+                              color: isDark ? AppColors.mono600 : AppColors.mono400,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$versionText • Internal System',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: isDark ? AppColors.mono700 : AppColors.mono400,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
