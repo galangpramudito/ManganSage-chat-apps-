@@ -44,13 +44,13 @@ jobs:
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-      
+
       # 5b. Create google-services.json dari GitHub Secret (untuk Firebase)
       - name: Create google-services.json
         run: |
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
       
-      # 6. Run build_runner untuk generate env.g.dart
+      # 6. Run code generation (build_runner) untuk generate env.g.dart
       - name: Run code generation (build_runner)
         run: dart run build_runner build --delete-conflicting-outputs
       
@@ -76,13 +76,7 @@ jobs:
           echo "UNIVERSAL_CHECKSUM=$UNIVERSAL_CHECKSUM" >> $GITHUB_OUTPUT
           echo "SHA-256: $UNIVERSAL_CHECKSUM"
       
-      # 10. Rename file APK agar informatif
-      - name: Rename APK file
-        run: |
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/mangan-group-${{ steps.version.outputs.VERSION }}.apk
-      
-      # 11. Buat GitHub Release & Upload file APK
+      # 10. Buat GitHub Release & Upload file APK
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -94,7 +88,7 @@ jobs:
             **Build Number:** ${{ steps.version.outputs.BUILD_NUMBER }}
             
             ### 📥 Download:
-            - **Universal APK:** [mangan-group-${{ steps.version.outputs.VERSION }}.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mangan-group-${{ steps.version.outputs.VERSION }}.apk)
+            - **Universal APK:** [app-release.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/app-release.apk)
             
             ### 🔒 SHA-256 Checksum:
             `${{ steps.checksums.outputs.UNIVERSAL_CHECKSUM }}`
@@ -102,19 +96,19 @@ jobs:
             ---
             *Otomatis di-build dan dirilis via GitHub Actions.*
           files: |
-            build/app/outputs/flutter-apk/mangan-group-${{ steps.version.outputs.VERSION }}.apk
+            build/app/outputs/flutter-apk/app-release.apk
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # 12. Daftarkan URL GitHub Release ke database Supabase agar app mendeteksi update
+      # 11. Daftarkan URL GitHub Release ke database Supabase agar app mendeteksi update
       - name: Update Supabase database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mangan-group-${{ steps.version.outputs.VERSION }}.apk"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/app-release.apk"
           
           curl -X POST "$SUPABASE_URL/rest/v1/app_releases" \
             -H "Authorization: Bearer $SUPABASE_KEY" \
