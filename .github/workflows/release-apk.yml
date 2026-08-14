@@ -96,7 +96,7 @@ jobs:
             ---
             *Otomatis di-build dan dirilis via GitHub Actions.*
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/flutter-apk/app-release.apk
           draft: false
           prerelease: false
         env:
