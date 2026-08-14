@@ -12,6 +12,9 @@ jobs:
   build:
     name: Build APK & Publish Release
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app  # Flutter app ada di subfolder app/
     
     steps:
       # 1. Checkout repository
